@@ -49,14 +49,79 @@ type YoutubeConfigForm = {
 	proxy_url: string;
 };
 
+type MistralOCRConfigForm = {
+	api_key: string;
+};
+
+type DoclingConfigForm = {
+	server_url: string;
+	ocr_engine: string;
+	ocr_lang: string;
+	do_picture_description: boolean;
+	picture_description_mode: string;
+	picture_description_local: string;
+	picture_description_api: string;
+};
+
+type ExternalWebLoaderConfigForm = {
+	url: string;
+	api_key: string;
+};
+
+type ExternalDocumentLoaderConfigForm = {
+	url: string;
+	api_key: string;
+};
+
 type RAGConfigForm = {
-	PDF_EXTRACT_IMAGES?: boolean;
-	ENABLE_GOOGLE_DRIVE_INTEGRATION?: boolean;
-	ENABLE_ONEDRIVE_INTEGRATION?: boolean;
-	chunk?: ChunkConfigForm;
-	content_extraction?: ContentExtractConfigForm;
-	web_loader_ssl_verification?: boolean;
-	youtube?: YoutubeConfigForm;
+	status?: boolean;
+	embedding_engine: string;
+	embedding_model: string;
+	reranking_model: string;
+	embedding_batch_size: number;
+	rerank_batch_size: number;
+	openai_api_base_url: string;
+	openai_api_key: string;
+	enable_web_loader_ssl_verification?: boolean;
+	content_extraction: ContentExtractConfigForm;
+	dataviz_content_extraction: ContentExtractConfigForm;
+	text_settings: ChunkConfigForm;
+	pdf_extract_images?: boolean;
+	youtube: YoutubeConfigForm;
+	web: {
+		search: {
+			enabled: boolean;
+			engine: string;
+			searxng_query_url: string;
+			brave_search_api_key: string;
+			mojeek_api_key: string;
+			bocha_api_key: string;
+			serpstack_api_key: string;
+			serpstack_https: boolean;
+			serper_api_key: string;
+			serply_api_key: string;
+			yacy_base_url: string;
+			tavily_api_key: string;
+			searchapi_api_key: string;
+			searchapi_engine: string;
+			bing_search_v7_endpoint: string;
+			bing_search_v7_subscription_key: string;
+			google_pse_api_key: string;
+			google_pse_engine_id: string;
+			kagi_search_api_key: string;
+			result_count: number;
+			concurrent_requests: number;
+			external_web_search_url: string;
+			external_web_search_api_key: string;
+		};
+		web_loader_engine: string;
+		external_web_loader: ExternalWebLoaderConfigForm;
+		external_document_loader: ExternalDocumentLoaderConfigForm;
+		jina_api_key: string;
+		llm_api_url: string;
+		mistral_ocr: MistralOCRConfigForm;
+		docling: DoclingConfigForm;
+	};
 };
 
 export const updateRAGConfig = async (token: string, payload: RAGConfigForm) => {
@@ -70,6 +135,247 @@ export const updateRAGConfig = async (token: string, payload: RAGConfigForm) => 
 		},
 		body: JSON.stringify({
 			...payload
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const getEmbeddingConfig = async (token: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/embedding`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+type EmbeddingModelUpdateForm = {
+	embedding_engine: string;
+	embedding_model: string;
+	openai_config?: {
+		url: string;
+		key: string;
+	};
+};
+
+export const updateEmbeddingConfig = async (token: string, payload: EmbeddingModelUpdateForm) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/embedding/update`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			...payload
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const getRerankingConfig = async (token: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/reranking`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+type RerankingModelUpdateForm = {
+	reranking_model: string;
+};
+
+export const updateRerankingConfig = async (token: string, payload: RerankingModelUpdateForm) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/reranking/update`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			...payload
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const getRAGTemplate = async (token: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/template`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res?.template ?? '';
+};
+
+export const getRAGFileContent = async (token: string, file_id: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/file/${file_id}/content`, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res?.content ?? '';
+};
+
+export const getRAGFileContentByPath = async (token: string, path: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/file/content`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			path: path
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res?.content ?? '';
+};
+
+export const updateRAGTemplate = async (token: string, template: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/template/update`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			template: template
 		})
 	})
 		.then(async (res) => {
@@ -117,9 +423,11 @@ export const getQuerySettings = async (token: string) => {
 };
 
 type QuerySettings = {
-	k: number | null;
-	r: number | null;
-	template: string | null;
+	n_results: number | null;
+	max_n_results: number | null;
+	hybrid: boolean;
+	bm25_weight: number;
+	distance_metric: string;
 };
 
 export const updateQuerySettings = async (token: string, settings: QuerySettings) => {
@@ -152,283 +460,6 @@ export const updateQuerySettings = async (token: string, settings: QuerySettings
 	return res;
 };
 
-export const getEmbeddingConfig = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/embedding`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-type OpenAIConfigForm = {
-	key: string;
-	url: string;
-};
-
-type AzureOpenAIConfigForm = {
-	key: string;
-	url: string;
-	version: string;
-};
-
-type EmbeddingModelUpdateForm = {
-	openai_config?: OpenAIConfigForm;
-	azure_openai_config?: AzureOpenAIConfigForm;
-	embedding_engine: string;
-	embedding_model: string;
-	embedding_batch_size?: number;
-};
-
-export const updateEmbeddingConfig = async (token: string, payload: EmbeddingModelUpdateForm) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/embedding/update`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			...payload
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const getRerankingConfig = async (token: string) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/reranking`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-type RerankingModelUpdateForm = {
-	reranking_model: string;
-};
-
-export const updateRerankingConfig = async (token: string, payload: RerankingModelUpdateForm) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/reranking/update`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			...payload
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export interface SearchDocument {
-	status: boolean;
-	collection_name: string;
-	filenames: string[];
-}
-
-export const processFile = async (
-	token: string,
-	file_id: string,
-	collection_name: string | null = null
-) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/file`, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			file_id: file_id,
-			collection_name: collection_name ? collection_name : undefined
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err.detail;
-			console.error(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const processYoutubeVideo = async (token: string, url: string) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/youtube`, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			url: url
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err.detail;
-			console.error(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const processWeb = async (token: string, collection_name: string, url: string) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/web`, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			url: url,
-			collection_name: collection_name
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			error = err.detail;
-			console.error(err);
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
-export const processWebSearch = async (
-	token: string,
-	query: string,
-	collection_name?: string
-): Promise<SearchDocument | null> => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/web/search`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify({
-			query,
-			collection_name: collection_name ?? ''
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
-};
-
 export const queryDoc = async (
 	token: string,
 	collection_name: string,
@@ -440,9 +471,8 @@ export const queryDoc = async (
 	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/query/doc`, {
 		method: 'POST',
 		headers: {
-			Accept: 'application/json',
 			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			Authorization: `Bearer ${token}`
 		},
 		body: JSON.stringify({
 			collection_name: collection_name,
@@ -455,6 +485,7 @@ export const queryDoc = async (
 			return res.json();
 		})
 		.catch((err) => {
+			console.error(err);
 			error = err.detail;
 			return null;
 		});
@@ -468,7 +499,7 @@ export const queryDoc = async (
 
 export const queryCollection = async (
 	token: string,
-	collection_names: string,
+	collection_names: string[],
 	query: string,
 	k: number | null = null
 ) => {
@@ -477,9 +508,8 @@ export const queryCollection = async (
 	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/query/collection`, {
 		method: 'POST',
 		headers: {
-			Accept: 'application/json',
 			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			Authorization: `Bearer ${token}`
 		},
 		body: JSON.stringify({
 			collection_names: collection_names,
@@ -492,6 +522,7 @@ export const queryCollection = async (
 			return res.json();
 		})
 		.catch((err) => {
+			console.error(err);
 			error = err.detail;
 			return null;
 		});
@@ -509,8 +540,8 @@ export const resetUploadDir = async (token: string) => {
 	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/reset/uploads`, {
 		method: 'POST',
 		headers: {
-			Accept: 'application/json',
-			authorization: `Bearer ${token}`
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
 		}
 	})
 		.then(async (res) => {
@@ -518,6 +549,7 @@ export const resetUploadDir = async (token: string) => {
 			return res.json();
 		})
 		.catch((err) => {
+			console.error(err);
 			error = err.detail;
 			return null;
 		});
@@ -535,8 +567,8 @@ export const resetVectorDB = async (token: string) => {
 	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/reset/db`, {
 		method: 'POST',
 		headers: {
-			Accept: 'application/json',
-			authorization: `Bearer ${token}`
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
 		}
 	})
 		.then(async (res) => {
@@ -544,6 +576,130 @@ export const resetVectorDB = async (token: string) => {
 			return res.json();
 		})
 		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const extractYoutubeUrls = async (token: string, text: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/extract/youtube/urls`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			text: text
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const processWebUrl = async (token: string, url: string, collection_name?: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/web`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			url: url,
+			collection_name: collection_name
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const processYoutubeVideo = async (token: string, url: string, collection_name?: string) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/process/youtube`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			url: url,
+			collection_name: collection_name
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			error = err.detail;
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+export const processWebSearch = async (token: string, query: string, engines?: string[]) => {
+	let error = null;
+
+	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/web/search`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			query: query,
+			engines: engines
+		})
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
 			error = err.detail;
 			return null;
 		});

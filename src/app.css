@@ -97,6 +97,27 @@ textarea::placeholder {
 	font-family: 'Archivo', 'Vazirmatn', sans-serif;
 }
 
+/* Link preview button styles */
+.link-preview-button {
+	display: inline-flex !important;
+	vertical-align: middle;
+	margin-left: 0.25rem;
+}
+
+.ProseMirror .link-preview-button {
+	cursor: pointer;
+}
+
+/* YouTube embed styles */
+.youtube-container {
+	max-width: 480px;
+	margin: 1rem 0;
+}
+
+.ProseMirror .youtube-container {
+	max-width: 480px;
+}
+
 .drag-region {
 	-webkit-app-region: drag;
 }
@@ -615,4 +636,54 @@ input[type='number'] {
 	padding-left: 2px;
 	padding-right: 2px;
 	white-space: nowrap;
+}
+
+/* YouTube embed styles */
+.youtube-container {
+	margin: 1rem 0;
+	max-width: 100%;
+}
+
+.youtube-wrapper {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+	border-radius: 0.5rem;
+}
+
+.youtube-placeholder {
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.youtube-placeholder:hover {
+	opacity: 0.95;
+}
+
+.youtube-title-bar {
+	font-size: 0.75rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ProseMirror YouTube node specific styles */
+.ProseMirror .youtube-container {
+	user-select: none;
+}
+
+.ProseMirror .youtube-container.ProseMirror-selectednode {
+	outline: 2px solid #68CEF8;
+	outline-offset: 2px;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+	.youtube-placeholder {
+		background-color: rgba(31, 41, 55, 0.8);
+	}
+	
+	.youtube-title-bar {
+		background-color: rgba(0, 0, 0, 0.8);
+	}
 }

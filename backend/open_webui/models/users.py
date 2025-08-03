@@ -11,6 +11,7 @@ from open_webui.models.groups import Groups
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import BigInteger, Column, String, Text
 from sqlalchemy import or_
+from sqlalchemy.orm import relationship
 
 
 ####################
@@ -36,6 +37,10 @@ class User(Base):
     info = Column(JSONField, nullable=True)
 
     oauth_sub = Column(Text, unique=True)
+    
+    # Relationships
+    # mcp_servers = relationship("MCPServer", back_populates="user", cascade="all, delete-orphan")
+    # NOTE: Temporarily disabled to avoid circular import issues
 
 
 class UserSettings(BaseModel):

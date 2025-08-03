@@ -23,6 +23,7 @@
 	import Evaluations from './Settings/Evaluations.svelte';
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Tools from './Settings/Tools.svelte';
+	import MCP from './Settings/MCP.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -38,6 +39,7 @@
 			'models',
 			'evaluations',
 			'tools',
+			'mcp',
 			'documents',
 			'web',
 			'code-execution',
@@ -205,6 +207,36 @@
 				</svg>
 			</div>
 			<div class=" self-center">{$i18n.t('Tools')}</div>
+		</button>
+
+		<button
+			id="mcp"
+			class="px-0.5 py-1 min-w-fit rounded-lg flex-1 md:flex-none flex text-left transition {selectedTab ===
+			'mcp'
+				? ''
+				: ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
+			on:click={() => {
+				goto('/admin/settings/mcp');
+			}}
+		>
+			<div class=" self-center mr-2">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					class="size-4"
+				>
+					<path
+						d="M14.25 6.087c0-.355.313-.75.75-.75.938 0 1.676.629 2.056 1.511.094.205.141.427.141.662v4.011c0 .235-.047.457-.14.662-.381.882-1.12 1.511-2.057 1.511-.437 0-.75-.395-.75-.75v-6.857Z"
+					/>
+					<path
+						fill-rule="evenodd"
+						d="M8.25 6.087c0-.355-.313-.75-.75-.75-.938 0-1.676.629-2.056 1.511-.094.205-.141.427-.141.662v4.011c0 .235.047.457.14.662.381.882 1.12 1.511 2.057 1.511.437 0 .75-.395.75-.75v-6.857ZM20.463 3.112c.307.2.474.516.474.85v16.078c0 .334-.167.65-.474.85a1.04 1.04 0 0 1-.89.077c-.42-.18-.845-.411-1.261-.705-1.045-.74-2.149-1.846-3.162-3.403-.374-.576-.686-1.195-.924-1.841h-4.452c-.238.646-.55 1.265-.924 1.841-1.013 1.557-2.117 2.663-3.162 3.403-.416.294-.84.525-1.261.705a1.04 1.04 0 0 1-.89-.077 1.001 1.001 0 0 1-.474-.85V3.962c0-.334.167-.65.474-.85.234-.154.532-.182.89-.078.42.182.845.412 1.261.706 1.045.74 2.149 1.846 3.162 3.403.374.575.686 1.195.924 1.84h4.452c.238-.645.55-1.265.924-1.84 1.013-1.557 2.117-2.663 3.162-3.403.416-.294.84-.524 1.261-.706.358-.103.656-.076.89.078Z"
+						clip-rule="evenodd"
+					/>
+				</svg>
+			</div>
+			<div class=" self-center">{$i18n.t('MCP')}</div>
 		</button>
 
 		<button
@@ -454,7 +486,15 @@
 		{:else if selectedTab === 'evaluations'}
 			<Evaluations />
 		{:else if selectedTab === 'tools'}
-			<Tools />
+			<Tools
+				saveSettings={async (updated) => {
+					toast.success($i18n.t('Settings saved successfully!'));
+					await tick();
+					await config.set(await getBackendConfig());
+				}}
+			/>
+		{:else if selectedTab === 'mcp'}
+			<MCP />
 		{:else if selectedTab === 'documents'}
 			<Documents
 				on:save={async () => {

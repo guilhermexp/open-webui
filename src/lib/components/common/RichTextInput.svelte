@@ -87,6 +87,8 @@
 
 	import Image from './RichTextInput/Image/index.js';
 	// import TiptapImage from '@tiptap/extension-image';
+	import Youtube from './RichTextInput/Youtube/index.js';
+	import LinkWithPreview from './RichTextInput/LinkWithPreview/index.js';
 
 	import FileHandler from '@tiptap/extension-file-handler';
 	import Typography from '@tiptap/extension-typography';
@@ -119,6 +121,7 @@
 	export let placeholder = 'Type here...';
 	export let link = false;
 	export let image = false;
+	export let youtube = false;
 	export let fileHandler = false;
 
 	export let onFileDrop = (currentEditor, files, pos) => {
@@ -906,12 +909,52 @@
 		}
 
 		console.log(bubbleMenuElement, floatingMenuElement);
+		
+		// Function to handle preview clicks
+		const handlePreviewClick = (href, pos, isYouTube) => {
+			if (!editor) return;
+			
+			if (isYouTube) {
+				// Extract YouTube video ID
+				const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/;
+				const match = href.match(youtubeRegex);
+				const videoId = match ? match[1] : null;
+				
+				if (videoId) {
+					// Use the existing YouTube extension to insert the embed
+					const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+					
+					// Move cursor to position after the link
+					editor.chain()
+						.focus()
+						.setTextSelection(pos)
+						.command(({ tr, dispatch }) => {
+							// Insert a line break after the link
+							const node = editor.schema.nodes.hardBreak.create();
+							if (dispatch) {
+								dispatch(tr.insert(pos, node));
+							}
+							return true;
+						})
+						.setYoutubeVideo({ src: youtubeUrl })
+						.run();
+				}
+			} else {
+				// For other links, we could add iframe preview or other preview logic
+				window.open(href, '_blank');
+			}
+		};
 
 		editor = new Editor({
 			element: element,
 			extensions: [
 				StarterKit.configure({
-					link: link
+					link: false, // Disable default link to use our custom one
+					bulletList: false,
+					orderedList: false,
+					listItem: false,
+					codeBlock: false,
+					listKeymap: false
 				}),
 				Placeholder.configure({ placeholder }),
 				SelectionDecoration,
@@ -931,7 +974,14 @@
 					}
 				}),
 				CharacterCount.configure({}),
+				...(link ? [LinkWithPreview.configure({
+					openOnClick: false,
+					onPreviewClick: (href, pos, isYouTube) => {
+						handlePreviewClick(href, pos, isYouTube);
+					}
+				})] : []),
 				...(image ? [Image] : []),
+				...(youtube ? [Youtube] : []),
 				...(fileHandler
 					? [
 							FileHandler.configure({
@@ -1207,6 +1257,13 @@
 
 		if (messageInput) {
 			selectTemplate();
+		}
+		
+		// Force update to show link decorations
+		if (editor) {
+			setTimeout(() => {
+				editor.view.updateState(editor.state);
+			}, 100);
 		}
 	});
 

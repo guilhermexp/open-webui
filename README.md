@@ -43,6 +43,8 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 - 🐍 **Native Python Function Calling Tool**: Enhance your LLMs with built-in code editor support in the tools workspace. Bring Your Own Function (BYOF) by simply adding your pure Python functions, enabling seamless integration with LLMs.
 
+- 🔌 **MCP (Model Context Protocol) Support**: Connect to external tool servers using MCP protocol. Support for STDIO, HTTP, and WebSocket transports. Seamlessly integrate tools from Smithery, Composio, and custom MCP servers with grouped tool selection for easy management.
+
 - 📚 **Local RAG Integration**: Dive into the future of chat interactions with groundbreaking Retrieval Augmented Generation (RAG) support. This feature seamlessly integrates document interactions into your chat experience. You can load documents directly into the chat or add files to your document library, effortlessly accessing them using the `#` command before a query.
 
 - 🔍 **Web Search for RAG**: Perform web searches using providers like `SearXNG`, `Google PSE`, `Brave Search`, `serpstack`, `serper`, `Serply`, `DuckDuckGo`, `TavilySearch`, `SearchApi` and `Bing` and inject the results directly into your chat experience.

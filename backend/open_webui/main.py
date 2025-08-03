@@ -4,10 +4,8 @@ import json
 import logging
 import mimetypes
 import os
-import shutil
 import sys
 import time
-import random
 from uuid import uuid4
 
 
@@ -72,6 +70,7 @@ from open_webui.routers import (
     channels,
     chats,
     notes,
+    note_folders,
     folders,
     configs,
     groups,
@@ -85,6 +84,7 @@ from open_webui.routers import (
     tools,
     users,
     utils,
+    mcp,
 )
 
 from open_webui.routers.retrieval import (
@@ -484,6 +484,48 @@ class SPAStaticFiles(StaticFiles):
                     return await super().get_response("index.html", scope)
             else:
                 raise ex
+
+
+class CORSStaticFiles(StaticFiles):
+    """Static files handler with CORS headers"""
+    
+    async def get_response(self, path: str, scope):
+        try:
+            response = await super().get_response(path, scope)
+        except Exception as ex:
+            # If file not found or other error, re-raise
+            raise ex
+            
+        # Add CORS headers to static file responses
+        origin = None
+        headers_dict = dict(scope.get("headers", []))
+        origin_header = headers_dict.get(b"origin")
+        if origin_header:
+            origin = origin_header.decode("utf-8")
+            
+        # Debug logging
+        print(f"Static file request for {path}, origin: {origin}, CORS_ALLOW_ORIGIN: {CORS_ALLOW_ORIGIN}")
+            
+        # Check if origin is in allowed origins
+        if origin and (CORS_ALLOW_ORIGIN == ["*"] or origin in CORS_ALLOW_ORIGIN):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+        elif CORS_ALLOW_ORIGIN == ["*"]:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+        else:
+            # If we have a specific origin list and current origin is not in it,
+            # still add headers for the first allowed origin to prevent CORS errors
+            if CORS_ALLOW_ORIGIN and len(CORS_ALLOW_ORIGIN) > 0 and CORS_ALLOW_ORIGIN[0] != "*":
+                response.headers["Access-Control-Allow-Origin"] = CORS_ALLOW_ORIGIN[0]
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+            
+        return response
 
 
 print(
@@ -1168,6 +1210,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -1194,12 +1237,14 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
 app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
 app.include_router(notes.router, prefix="/api/v1/notes", tags=["notes"])
+app.include_router(note_folders.router, prefix="/api/v1/note-folders", tags=["note-folders"])
 
 
 app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
 app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["knowledge"])
 app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
+app.include_router(mcp.router, prefix="/api/v1/mcp", tags=["mcp"])
 
 app.include_router(memories.router, prefix="/api/v1/memories", tags=["memories"])
 app.include_router(folders.router, prefix="/api/v1/folders", tags=["folders"])
@@ -1813,7 +1858,49 @@ async def healthcheck_with_db():
     return {"status": True}
 
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", CORSStaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/favicon.png")
+@app.options("/favicon.png")
+async def favicon(request: Request):
+    # Handle OPTIONS request for CORS preflight
+    if request.method == "OPTIONS":
+        headers = {}
+        origin = request.headers.get("origin")
+        
+        if origin and (CORS_ALLOW_ORIGIN == ["*"] or origin in CORS_ALLOW_ORIGIN):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            headers["Access-Control-Allow-Headers"] = "*"
+        elif CORS_ALLOW_ORIGIN == ["*"]:
+            headers["Access-Control-Allow-Origin"] = "*"
+            headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            headers["Access-Control-Allow-Headers"] = "*"
+            
+        return Response(content="", headers=headers)
+    
+    # Handle GET request
+    favicon_path = os.path.join(STATIC_DIR, "favicon.png")
+    if os.path.exists(favicon_path):
+        headers = {}
+        origin = request.headers.get("origin")
+        
+        # Add CORS headers based on configuration
+        if origin and (CORS_ALLOW_ORIGIN == ["*"] or origin in CORS_ALLOW_ORIGIN):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            headers["Access-Control-Allow-Headers"] = "*"
+        elif CORS_ALLOW_ORIGIN == ["*"]:
+            headers["Access-Control-Allow-Origin"] = "*"
+            headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            headers["Access-Control-Allow-Headers"] = "*"
+            
+        return FileResponse(favicon_path, media_type="image/png", headers=headers)
+    else:
+        raise HTTPException(status_code=404, detail="Favicon not found")
 
 
 @app.get("/cache/{path:path}")

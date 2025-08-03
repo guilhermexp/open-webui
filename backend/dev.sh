@@ -1,3 +1,18 @@
-export CORS_ALLOW_ORIGIN=http://localhost:5173/
-PORT="${PORT:-8080}"
-uvicorn open_webui.main:app --port $PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload
+#!/bin/bash
+
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+    source venv/bin/activate
+    echo "Installing dependencies..."
+    pip install -r requirements.txt
+fi
+
+export CORS_ALLOW_ORIGIN=http://localhost:5173
+export PYTHONPATH="${PYTHONPATH}:/Users/guilhermevarela/Documents/Repositorios/open-webui/backend"
+export ENABLE_WEB_SEARCH=true
+PORT="${PORT:-8082}"
+python -m uvicorn open_webui.main:app --port $PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload

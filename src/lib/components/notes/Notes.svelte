@@ -30,10 +30,12 @@
 	$: loadLocale($i18n.languages);
 
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount, getContext, onDestroy } from 'svelte';
 	import { WEBUI_NAME, config, prompts as _prompts, user } from '$lib/stores';
 
-	import { createNewNote, deleteNoteById, getNotes } from '$lib/apis/notes';
+	import { createNewNote, deleteNoteById, getNotes, updateNoteFolderIdById } from '$lib/apis/notes';
+	import { getNoteFolderById, getNoteFolders, createNewNoteFolder } from '$lib/apis/note-folders';
 	import { capitalizeFirstLetter, copyToClipboard, getTimeRange } from '$lib/utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -47,6 +49,8 @@
 	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
 	import { marked } from 'marked';
 	import XMark from '../icons/XMark.svelte';
+	import Folder from '../common/Folder.svelte';
+	import NoteFolderModal from '../layout/Sidebar/NoteFolders/NoteFolderModal.svelte';
 
 	const i18n = getContext('i18n');
 	let loaded = false;
@@ -59,6 +63,21 @@
 
 	let selectedNote = null;
 	let notes = {};
+	let currentFolderId = null;
+	let currentFolder = null;
+	let noteFolders = [];
+	let showCreateFolderModal = false;
+
+	$: currentFolderId = $page.url.searchParams.get('folder');
+	
+	// React to folder changes
+	$: {
+		if (loaded && currentFolderId !== undefined) {
+			console.log('Current folder ID changed to:', currentFolderId);
+			init();
+		}
+	}
+	
 	$: if (fuse) {
 		notes = groupNotes(
 			query
@@ -93,11 +112,23 @@
 	};
 
 	const init = async () => {
-		noteItems = await getNotes(localStorage.token, true);
+		console.log('Notes init() called with currentFolderId:', currentFolderId);
+		noteItems = await getNotes(localStorage.token, true, currentFolderId);
+		console.log('Loaded notes:', noteItems);
 
 		fuse = new Fuse(noteItems, {
 			keys: ['title']
 		});
+		
+		// Load folder info if we're in a folder
+		if (currentFolderId) {
+			currentFolder = await getNoteFolderById(localStorage.token, currentFolderId);
+			console.log('Current folder:', currentFolder);
+		}
+		
+		// Load all folders for the dropdown
+		noteFolders = await getNoteFolders(localStorage.token);
+		console.log('All folders:', noteFolders);
 	};
 
 	const createNoteHandler = async () => {
@@ -113,7 +144,8 @@
 				}
 			},
 			meta: null,
-			access_control: {}
+			access_control: {},
+			folder_id: currentFolderId
 		}).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -121,6 +153,17 @@
 
 		if (res) {
 			goto(`/notes/${res.id}`);
+		}
+	};
+	
+	const createFolderHandler = async (folder) => {
+		const res = await createNewNoteFolder(localStorage.token, folder).catch((error) => {
+			toast.error(`${error}`);
+			return null;
+		});
+		
+		if (res) {
+			await init();
 		}
 	};
 
@@ -308,6 +351,7 @@
 		dropzoneElement?.addEventListener('drop', onDrop);
 		dropzoneElement?.addEventListener('dragleave', onDragLeave);
 	});
+	
 </script>
 
 <svelte:head>
@@ -317,6 +361,11 @@
 </svelte:head>
 
 <FilesOverlay show={dragged} />
+
+<NoteFolderModal
+	bind:show={showCreateFolderModal}
+	onSubmit={createFolderHandler}
+/>
 
 <div id="notes-container" class="w-full min-h-full h-full">
 	{#if loaded}
@@ -334,6 +383,16 @@
 		</DeleteConfirmDialog>
 
 		<div class="flex flex-col gap-1 px-3.5">
+			{#if currentFolder}
+				<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+					<a href="/notes" class="hover:text-gray-900 dark:hover:text-gray-100">
+						{$i18n.t('All Notes')}
+					</a>
+					<ChevronRight className="size-3" />
+					<span class="text-gray-900 dark:text-gray-100">{currentFolder.name}</span>
+				</div>
+			{/if}
+			
 			<div class=" flex flex-1 items-center w-full space-x-2">
 				<div class="flex flex-1 items-center">
 					<div class=" self-center ml-1 mr-3">
@@ -402,6 +461,23 @@
 																	toast.error($i18n.t('Failed to copy link'));
 																}
 															}}
+															onMoveToFolder={async (folderId) => {
+																console.log('Moving note', note.id, 'to folder', folderId);
+																// Update note folder
+																const res = await updateNoteFolderIdById(localStorage.token, note.id, folderId);
+																console.log('Move result:', res);
+																if (res) {
+																	toast.success($i18n.t('Note moved successfully'));
+																	// Reload notes
+																	noteItems = await getNotes(localStorage.token, true, currentFolderId);
+																	fuse = new Fuse(noteItems, {
+																		keys: ['title', 'data.content.md']
+																	});
+																} else {
+																	toast.error($i18n.t('Failed to move note'));
+																}
+															}}
+															folders={noteFolders}
 															onDelete={() => {
 																selectedNote = note;
 																showDeleteConfirm = true;

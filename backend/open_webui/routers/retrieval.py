@@ -1608,6 +1608,96 @@ def process_youtube_video(
         )
 
 
+class ExtractYoutubeUrlsForm(BaseModel):
+    text: str
+
+
+@router.post("/extract/youtube/urls")
+def extract_youtube_urls_from_text(
+    request: Request, form_data: ExtractYoutubeUrlsForm, user=Depends(get_verified_user)
+):
+    """Extract YouTube URLs from text and fetch their transcripts."""
+    import re
+    from open_webui.retrieval.loaders.youtube import _parse_video_id
+    
+    try:
+        # Pattern to match YouTube URLs
+        youtube_patterns = [
+            r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=[\w-]+',
+            r'(?:https?://)?(?:www\.)?youtube\.com/embed/[\w-]+',
+            r'(?:https?://)?youtu\.be/[\w-]+',
+            r'(?:https?://)?m\.youtube\.com/watch\?v=[\w-]+',
+        ]
+        
+        # Find all YouTube URLs in the text
+        youtube_urls = []
+        for pattern in youtube_patterns:
+            urls = re.findall(pattern, form_data.text)
+            youtube_urls.extend(urls)
+        
+        # Remove duplicates
+        youtube_urls = list(set(youtube_urls))
+        
+        # Process each YouTube URL
+        results = []
+        for url in youtube_urls:
+            try:
+                # Parse video ID
+                video_id = _parse_video_id(url)
+                if not video_id:
+                    continue
+                    
+                # Load YouTube transcript
+                loader = YoutubeLoader(
+                    url,
+                    language=request.app.state.config.YOUTUBE_LOADER_LANGUAGE,
+                    proxy_url=request.app.state.config.YOUTUBE_LOADER_PROXY_URL,
+                )
+                
+                try:
+                    docs = loader.load()
+                    content = " ".join([doc.page_content for doc in docs])
+                except Exception as loader_error:
+                    error_str = str(loader_error)
+                    if "rate limit" in error_str.lower() or "429" in error_str:
+                        # Try fallback loader
+                        log.info(f"Rate limited, trying fallback loader for {url}")
+                        from open_webui.retrieval.loaders.youtube_fallback import YoutubeFallbackLoader
+                        fallback_loader = YoutubeFallbackLoader(url)
+                        docs = fallback_loader.load()
+                        content = " ".join([doc.page_content for doc in docs])
+                    else:
+                        raise loader_error
+                
+                results.append({
+                    "url": url,
+                    "video_id": video_id,
+                    "content": content,
+                    "status": "success"
+                })
+            except Exception as e:
+                log.warning(f"Failed to load YouTube transcript for {url}: {e}")
+                results.append({
+                    "url": url,
+                    "video_id": video_id if 'video_id' in locals() else None,
+                    "content": None,
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        return {
+            "status": True,
+            "youtube_urls": results
+        }
+        
+    except Exception as e:
+        log.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.DEFAULT(e),
+        )
+
+
 @router.post("/process/web")
 def process_web(
     request: Request, form_data: ProcessUrlForm, user=Depends(get_verified_user)

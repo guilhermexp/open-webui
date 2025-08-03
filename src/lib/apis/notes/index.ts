@@ -39,10 +39,12 @@ export const createNewNote = async (token: string, note: NoteItem) => {
 	return res;
 };
 
-export const getNotes = async (token: string = '', raw: boolean = false) => {
+export const getNotes = async (token: string = '', raw: boolean = false, folderId?: string) => {
 	let error = null;
 
-	const res = await fetch(`${WEBUI_API_BASE_URL}/notes/`, {
+	const url = folderId ? `${WEBUI_API_BASE_URL}/notes/?folder_id=${folderId}` : `${WEBUI_API_BASE_URL}/notes/`;
+
+	const res = await fetch(url, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -199,6 +201,42 @@ export const deleteNoteById = async (token: string, id: string) => {
 			'Content-Type': 'application/json',
 			authorization: `Bearer ${token}`
 		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.then((json) => {
+			return json;
+		})
+		.catch((err) => {
+			error = err.detail;
+
+			console.error(err);
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
+
+export const updateNoteFolderIdById = async (token: string, id: string, folderId: string | null) => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/notes/${id}/update/folder`, {
+		method: "POST",
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({
+			folder_id: folderId
+		})
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();

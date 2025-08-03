@@ -103,7 +103,17 @@ class YoutubeLoader:
                 self.video_id, proxies=youtube_proxies
             )
         except Exception as e:
+            error_msg = str(e)
             log.exception("Loading YouTube transcript failed")
+            # Check for common error types
+            if "429" in error_msg or "Too Many Requests" in error_msg:
+                raise Exception("YouTube API rate limit exceeded. Please try again later or configure a proxy.")
+            elif "403" in error_msg or "Forbidden" in error_msg:
+                raise Exception("Access forbidden. The video may be private or age-restricted.")
+            elif "404" in error_msg or "Not Found" in error_msg:
+                raise Exception("Video not found. Please check the URL.")
+            else:
+                raise Exception(f"Failed to load YouTube transcript: {error_msg}")
             return []
 
         # Try each language in order of priority

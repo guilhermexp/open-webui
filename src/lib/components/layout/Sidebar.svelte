@@ -39,6 +39,7 @@
 		importChat
 	} from '$lib/apis/chats';
 	import { createNewFolder, getFolders, updateFolderParentIdById } from '$lib/apis/folders';
+	import { createNewNoteFolder, getNoteFolders, updateNoteFolderParentIdById } from '$lib/apis/note-folders';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import ArchivedChatsModal from './ArchivedChatsModal.svelte';
@@ -59,6 +60,8 @@
 	import Search from '../icons/Search.svelte';
 	import SearchModal from './SearchModal.svelte';
 	import FolderModal from './Sidebar/Folders/FolderModal.svelte';
+	import NoteFolders from './Sidebar/NoteFolders.svelte';
+	import NoteFolderModal from './Sidebar/NoteFolders/NoteFolderModal.svelte';
 
 	const BREAKPOINT = 768;
 
@@ -78,6 +81,11 @@
 	let showCreateFolderModal = false;
 	let folders = {};
 	let newFolderId = null;
+	
+	let showCreateNoteFolderModal = false;
+	let noteFolders = {};
+	let newNoteFolderId = null;
+	let selectedNoteFolder = null;
 
 	const initFolders = async () => {
 		const folderList = await getFolders(localStorage.token).catch((error) => {
@@ -164,6 +172,102 @@
 		}
 	};
 
+	const initNoteFolders = async () => {
+		console.log('initNoteFolders called');
+		const folderList = await getNoteFolders(localStorage.token).catch((error) => {
+			console.error('Error getting note folders:', error);
+			toast.error(`${error}`);
+			return [];
+		});
+		console.log('Folder list from API:', folderList);
+
+		noteFolders = {};
+
+		// First pass: Initialize all folder entries
+		for (const folder of folderList) {
+			// Ensure folder is added to folders with its data
+			noteFolders[folder.id] = { ...(noteFolders[folder.id] || {}), ...folder };
+
+			if (newNoteFolderId && folder.id === newNoteFolderId) {
+				noteFolders[folder.id].new = true;
+				newNoteFolderId = null;
+			}
+		}
+
+		// Second pass: Tie child folders to their parents
+		for (const folder of folderList) {
+			if (folder.parent_id) {
+				// Ensure the parent folder is initialized if it doesn't exist
+				if (!noteFolders[folder.parent_id]) {
+					noteFolders[folder.parent_id] = {}; // Create a placeholder if not already present
+				}
+
+				// Initialize childrenIds array if it doesn't exist and add the current folder id
+				noteFolders[folder.parent_id].childrenIds = noteFolders[folder.parent_id].childrenIds
+					? [...noteFolders[folder.parent_id].childrenIds, folder.id]
+					: [folder.id];
+
+				// Sort the children by updated_at field
+				noteFolders[folder.parent_id].childrenIds.sort((a, b) => {
+					return noteFolders[b].updated_at - noteFolders[a].updated_at;
+				});
+			}
+		}
+		console.log('Final noteFolders state:', noteFolders);
+	};
+
+	const createNoteFolder = async ({ name, data }) => {
+		console.log('Creating note folder:', { name, data });
+		if (name === '') {
+			toast.error($i18n.t('Folder name cannot be empty.'));
+			return;
+		}
+
+		const rootFolders = Object.values(noteFolders).filter((folder) => folder.parent_id === null);
+		if (rootFolders.find((folder) => folder.name.toLowerCase() === name.toLowerCase())) {
+			// If a folder with the same name already exists, append a number to the name
+			let i = 1;
+			while (
+				rootFolders.find((folder) => folder.name.toLowerCase() === `${name} ${i}`.toLowerCase())
+			) {
+				i++;
+			}
+
+			name = `${name} ${i}`;
+		}
+
+		// Add a dummy folder to the list to show the user that the folder is being created
+		const tempId = uuidv4();
+		noteFolders = {
+			...noteFolders,
+			tempId: {
+				id: tempId,
+				name: name,
+				created_at: Date.now(),
+				updated_at: Date.now()
+			}
+		};
+
+		const res = await createNewNoteFolder(localStorage.token, {
+			name,
+			data
+		}).catch((error) => {
+			console.error('Error creating note folder:', error);
+			toast.error(`${error}`);
+			return null;
+		});
+
+		console.log('Create note folder response:', res);
+		if (res) {
+			// newNoteFolderId = res.id;
+			await initNoteFolders();
+		} else {
+			// Remove the temporary folder if creation failed
+			delete noteFolders.tempId;
+			noteFolders = { ...noteFolders };
+		}
+	};
+
 	const initChannels = async () => {
 		await channels.set(await getChannels(localStorage.token));
 	};
@@ -173,6 +277,7 @@
 		tags.set(await getAllTags(localStorage.token));
 		pinnedChats.set(await getPinnedChatList(localStorage.token));
 		initFolders();
+		initNoteFolders();
 
 		currentChatPage.set(1);
 		allChatsLoaded = false;
@@ -373,6 +478,7 @@
 
 		await initChannels();
 		await initChatList();
+		await initNoteFolders();
 
 		window.addEventListener('keydown', onKeyDown);
 		window.addEventListener('keyup', onKeyUp);
@@ -439,6 +545,15 @@
 	onSubmit={async (folder) => {
 		await createFolder(folder);
 		showCreateFolderModal = false;
+	}}
+/>
+
+<NoteFolderModal
+	bind:show={showCreateNoteFolderModal}
+	onSubmit={async (folder) => {
+		console.log('NoteFolderModal onSubmit called with:', folder);
+		await createNoteFolder(folder);
+		showCreateNoteFolderModal = false;
 	}}
 />
 
@@ -599,7 +714,7 @@
 					on:click={() => {
 						selectedChatId = null;
 						chatId.set('');
-
+						selectedNoteFolder = null;
 						if ($mobile) {
 							showSidebar.set(false);
 						}
@@ -608,13 +723,12 @@
 				>
 					<div class="self-center">
 						<svg
-							class="size-4"
-							aria-hidden="true"
 							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
 							fill="none"
 							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="size-[1.1rem]"
 						>
 							<path
 								stroke="currentColor"
@@ -630,7 +744,61 @@
 						<div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
 					</div>
 				</a>
+				
+				<!-- Botão + para criar pastas -->
+				<button
+					class="self-center p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+					on:click={async () => {
+						await tick();
+						setTimeout(() => {
+							showCreateNoteFolderModal = true;
+						}, 0);
+					}}
+					type="button"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="2.5"
+						stroke="currentColor"
+						class="size-3.5"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M12 4.5v15m7.5-7.5h-15"
+						/>
+					</svg>
+				</button>
 			</div>
+			
+			{#if Object.keys(noteFolders).length > 0}
+				<!-- Mostrar pastas como sub-itens quando houver pastas -->
+				<div class="ml-3">
+					<NoteFolders
+						folders={noteFolders}
+						{shiftKey}
+						onDelete={(folderId) => {
+							selectedNoteFolder = null;
+							initNoteFolders();
+						}}
+						on:update={() => {
+							initNoteFolders();
+						}}
+						on:change={async () => {
+							initNoteFolders();
+						}}
+						on:click={(e) => {
+							selectedNoteFolder = e.detail;
+							goto(`/notes?folder=${e.detail.id}`);
+							if ($mobile) {
+								showSidebar.set(false);
+							}
+						}}
+					/>
+				</div>
+			{/if}
 		{/if}
 
 		{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}

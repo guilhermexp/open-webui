@@ -11,9 +11,16 @@
 	export let show = false;
 	export let selectedModelId = '';
 	export let files = [];
+	export let editor = null;
 
 	export let onUpdate = (files: any[]) => {
 		// Default no-op function
+	};
+	
+	const convertYoutubeUrls = () => {
+		if (editor && editor.commands.convertYoutubeUrls) {
+			editor.commands.convertYoutubeUrls();
+		}
 	};
 </script>
 
@@ -86,6 +93,18 @@
 
 			<hr class="my-2 border-gray-50 dark:border-gray-700/10" />
 		{/if}
+
+		<div class=" text-xs font-medium mb-1">YouTube URLs</div>
+		
+		<button
+			class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-sm px-3 py-2 rounded-lg transition"
+			on:click={convertYoutubeUrls}
+			disabled={!editor}
+		>
+			{$i18n.t('Convert YouTube URLs to Videos')}
+		</button>
+		
+		<hr class="my-2 border-gray-50 dark:border-gray-700/10" />
 
 		<div class=" text-xs font-medium mb-1">Model</div>
 

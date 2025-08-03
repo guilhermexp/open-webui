@@ -14,6 +14,7 @@
 	import { toast } from 'svelte-sonner';
 
 	import { goto } from '$app/navigation';
+	import { extractYoutubeUrls, processWebUrl } from '$lib/apis/retrieval';
 
 	import dayjs from '$lib/dayjs';
 	import calendar from 'dayjs/plugin/calendar';
@@ -663,14 +664,90 @@ ${content}
 			md: ''
 		};
 
-		const systemPrompt = `Enhance existing notes using additional context provided from audio transcription or uploaded file content in the content's primary language. Your task is to make the notes more useful and comprehensive by incorporating relevant information from the provided context.
+		// Extract URLs from the note content
+		let extractedContext = '';
+		
+		try {
+			// Show loading toast
+			const loadingToast = toast.loading($i18n.t('Extracting content from URLs...'));
+			
+			// Check for YouTube URLs in the note
+			try {
+				const youtubeResult = await extractYoutubeUrls(localStorage.token, note.data.content.md);
+				if (youtubeResult?.youtube_urls && youtubeResult.youtube_urls.length > 0) {
+					for (const urlData of youtubeResult.youtube_urls) {
+						if (urlData.content) {
+							extractedContext += `\n\nYouTube Video (${urlData.url}):\n${urlData.content}\n`;
+						} else if (urlData.error) {
+							console.warn(`YouTube extraction failed for ${urlData.url}:`, urlData.error);
+						}
+					}
+				}
+			} catch (ytError) {
+				console.error('YouTube extraction error:', ytError);
+			}
+			
+			// Check for other web URLs
+			const urlPattern = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
+			const urls = note.data.content.md.match(urlPattern) || [];
+			const nonYoutubeUrls = urls.filter(url => !url.includes('youtube.com') && !url.includes('youtu.be'));
+			
+			for (const url of nonYoutubeUrls) {
+				try {
+					const webResult = await processWebUrl(localStorage.token, url);
+					if (webResult?.content) {
+						extractedContext += `\n\nWeb Content (${url}):\n${webResult.content}\n`;
+					}
+				} catch (webErr) {
+					console.warn(`Web extraction failed for ${url}:`, webErr);
+				}
+			}
+			
+			// Dismiss loading toast
+			toast.dismiss(loadingToast);
+			
+			if (extractedContext) {
+				toast.success($i18n.t('Content extracted successfully'));
+			}
+		} catch (err) {
+			console.error('Error during URL extraction:', err);
+		}
 
-Input will be provided within <notes> and <context> XML tags, providing a structure for the existing notes and context respectively.
+		const systemPrompt = `Você é um assistente especializado em criar notas detalhadas e bem estruturadas. Sua tarefa é aprimorar as notas existentes incorporando informações relevantes do contexto fornecido (transcrições de vídeo, conteúdo web, ou arquivos).
 
-# Output Format
+# Instruções:
 
-Provide the enhanced notes in markdown format. Use markdown syntax for headings, lists, task lists ([ ]) where tasks or checklists are strongly implied, and emphasis to improve clarity and presentation. Ensure that all integrated content from the context is accurately reflected. Return only the markdown formatted note.
-`;
+1. **Mantenha e expanda** o conteúdo original das notas
+2. **Integre naturalmente** as informações do contexto fornecido
+3. **Estruture o conteúdo** usando markdown apropriado:
+   - Use # ## ### para hierarquia de títulos
+   - Use **negrito** para conceitos importantes
+   - Use listas numeradas ou com marcadores quando apropriado
+   - Use > para citações relevantes
+   - Use \`código\` para termos técnicos quando aplicável
+
+4. **Para vídeos do YouTube**, crie uma estrutura como:
+   - Título e informações básicas
+   - Resumo executivo
+   - Pontos principais discutidos
+   - Detalhes importantes por tópico
+   - Conclusões ou takeaways
+
+5. **Para conteúdo web**, organize:
+   - Informações principais do artigo
+   - Dados e fatos relevantes
+   - Análises ou insights
+
+6. **Mantenha o idioma** consistente com as notas originais
+
+# Formato de Saída:
+
+Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adicionais.`;
+
+		const contextContent = 
+			(files && files.length > 0
+				? files.map((file) => `${file.name}: ${file?.file?.data?.content ?? 'Could not extract content'}\n`).join('')
+				: '') + extractedContext;
 
 		const [res, controller] = await chatCompletion(
 			localStorage.token,
@@ -686,9 +763,7 @@ Provide the enhanced notes in markdown format. Use markdown syntax for headings,
 						role: 'user',
 						content:
 							`<notes>${note.data.content.md}</notes>` +
-							(files && files.length > 0
-								? `\n<context>${files.map((file) => `${file.name}: ${file?.file?.data?.content ?? 'Could not extract content'}\n`).join('')}</context>`
-								: '')
+							(contextContent ? `\n<context>${contextContent}</context>` : '')
 					}
 				]
 			},

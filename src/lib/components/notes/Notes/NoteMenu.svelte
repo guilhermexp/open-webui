@@ -14,6 +14,7 @@
 	import DocumentDuplicate from '$lib/components/icons/DocumentDuplicate.svelte';
 	import Share from '$lib/components/icons/Share.svelte';
 	import Link from '$lib/components/icons/Link.svelte';
+	import FolderOpen from '$lib/components/icons/FolderOpen.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -25,6 +26,8 @@
 
 	export let onCopyLink = null;
 	export let onCopyToClipboard = null;
+	export let onMoveToFolder = null;
+	export let folders = [];
 
 	export let onChange = () => {};
 </script>
@@ -128,6 +131,43 @@
 								<div class="flex items-center">{$i18n.t('Copy to clipboard')}</div>
 							</DropdownMenu.Item>
 						{/if}
+					</DropdownMenu.SubContent>
+				</DropdownMenu.Sub>
+			{/if}
+			
+			{#if onMoveToFolder && folders.length > 0}
+				<DropdownMenu.Sub>
+					<DropdownMenu.SubTrigger
+						class="flex gap-2 items-center px-3 py-2 text-sm  cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+					>
+						<FolderOpen strokeWidth="2" />
+						<div class="flex items-center">{$i18n.t('Move to folder')}</div>
+					</DropdownMenu.SubTrigger>
+					<DropdownMenu.SubContent
+						class="w-full rounded-xl px-1 py-1.5 z-50 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
+						transition={flyAndScale}
+						sideOffset={8}
+						align="end"
+					>
+						<DropdownMenu.Item
+							class="flex gap-2 items-center px-3 py-2 text-sm  cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+							on:click={() => {
+								onMoveToFolder(null);
+							}}
+						>
+							<div class="flex items-center line-clamp-1">{$i18n.t('All Notes')}</div>
+						</DropdownMenu.Item>
+						
+						{#each folders as folder}
+							<DropdownMenu.Item
+								class="flex gap-2 items-center px-3 py-2 text-sm  cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md"
+								on:click={() => {
+									onMoveToFolder(folder.id);
+								}}
+							>
+								<div class="flex items-center line-clamp-1">{folder.name}</div>
+							</DropdownMenu.Item>
+						{/each}
 					</DropdownMenu.SubContent>
 				</DropdownMenu.Sub>
 			{/if}

@@ -22,6 +22,12 @@
 	export let dragAndDrop = true;
 
 	export let className = '';
+	
+	// Props adicionais para compatibilidade com NoteFolderItem
+	export let type: string = '';
+	export let shiftKey: boolean = false;
+	export let selected: boolean = false;
+	export let importPlaceholder: string = '';
 
 	let folderElement;
 
@@ -139,7 +145,10 @@
 			<div
 				class="w-full group rounded-md relative flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-500 dark:text-gray-500 transition"
 			>
-				<button class="w-full py-1.5 pl-2 flex items-center gap-1.5 text-xs font-medium">
+				<button 
+					class="w-full py-1.5 pl-2 flex items-center gap-1.5 text-xs font-medium"
+					on:click={() => dispatch('click')}
+				>
 					<div class="text-gray-300 dark:text-gray-600">
 						{#if open}
 							<ChevronDown className=" size-3" strokeWidth="2.5" />
@@ -174,13 +183,22 @@
 						</Tooltip>
 					</button>
 				{/if}
+				
+				<!-- Slot para ações adicionais -->
+				<div class="absolute right-2 top-1/2 -translate-y-1/2">
+					<slot name="actions"></slot>
+				</div>
 			</div>
 
 			<div slot="content" class="w-full">
-				<slot></slot>
+				<slot name="content">
+					<slot></slot>
+				</slot>
 			</div>
 		</Collapsible>
 	{:else}
-		<slot></slot>
+		<slot name="content">
+			<slot></slot>
+		</slot>
 	{/if}
 </div>
