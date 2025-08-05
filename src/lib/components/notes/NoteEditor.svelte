@@ -11,6 +11,11 @@
 	const i18n = getContext('i18n');
 
 	import { marked } from 'marked';
+	// Configurar marked para preservar links corretamente
+	marked.use({
+		breaks: true,
+		gfm: true
+	});
 	import { toast } from 'svelte-sonner';
 
 	import { goto } from '$app/navigation';
@@ -302,8 +307,41 @@ ${content}
 		await enhanceCompletionHandler(model);
 		editing = false;
 
-		onEdited();
+		// Aguardar um pouco para garantir que o editor processou o conteúdo
+		await tick();
+		
+		// Não precisamos chamar onEdited() aqui pois já estamos atualizando o editor
+		// dentro de enhanceCompletionHandler
 		versionIdx = null;
+
+		// Gerar título automaticamente após embelezar a nota
+		// Aguardar um pouco para garantir que o conteúdo foi atualizado
+		await tick();
+		
+		// Aguardar um pouco mais para garantir que o conteúdo embelezado foi processado
+		await new Promise(resolve => setTimeout(resolve, 500));
+		
+		try {
+			// Verificar se ainda temos um modelo válido selecionado
+			if (selectedModelId && selectedModelId !== '') {
+				// Garantir que o modelo ainda é válido
+				const currentModel = $models
+					.filter((model) => model.id === selectedModelId && !(model?.info?.meta?.hidden ?? false))
+					.find((model) => model.id === selectedModelId);
+				
+				if (currentModel) {
+					await generateTitleHandler();
+					toast.success($i18n.t('Note enhanced and title generated successfully!'));
+				} else {
+					toast.success($i18n.t('Note enhanced successfully!'));
+				}
+			} else {
+				toast.success($i18n.t('Note enhanced successfully!'));
+			}
+		} catch (error) {
+			console.error('Error generating title after enhance:', error);
+			toast.success($i18n.t('Note enhanced successfully!'));
+		}
 	}
 
 	const stopResponseHandler = async () => {
@@ -719,30 +757,34 @@ ${content}
 
 1. **Mantenha e expanda** o conteúdo original das notas
 2. **Integre naturalmente** as informações do contexto fornecido
-3. **Estruture o conteúdo** usando markdown apropriado:
+3. **PRESERVE TODOS OS LINKS**: Mantenha TODOS os links (URLs) exatamente como estão no formato markdown [texto](url)
+4. **Estruture o conteúdo** usando markdown apropriado:
    - Use # ## ### para hierarquia de títulos
    - Use **negrito** para conceitos importantes
    - Use listas numeradas ou com marcadores quando apropriado
    - Use > para citações relevantes
    - Use \`código\` para termos técnicos quando aplicável
+   - **IMPORTANTE**: Todos os links devem ser mantidos no formato [texto do link](URL completa)
 
-4. **Para vídeos do YouTube**, crie uma estrutura como:
+5. **Para vídeos do YouTube**, crie uma estrutura como:
    - Título e informações básicas
    - Resumo executivo
    - Pontos principais discutidos
    - Detalhes importantes por tópico
    - Conclusões ou takeaways
+   - **Mantenha o link do YouTube** no formato [título ou descrição](URL do YouTube)
 
-5. **Para conteúdo web**, organize:
+6. **Para conteúdo web**, organize:
    - Informações principais do artigo
    - Dados e fatos relevantes
    - Análises ou insights
+   - **Preserve o link original** no formato [título ou descrição](URL do site)
 
-6. **Mantenha o idioma** consistente com as notas originais
+7. **Mantenha o idioma** consistente com as notas originais
 
 # Formato de Saída:
 
-Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adicionais.`;
+Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adicionais. TODOS os links devem estar preservados no formato markdown.`;
 
 		const contextContent = 
 			(files && files.length > 0
@@ -812,7 +854,8 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 
 										note.data.content.md = enhancedContent.md;
 										note.data.content.html = enhancedContent.html;
-										note.data.content.json = null;
+										// Não atualizar o JSON durante o streaming
+										// Vamos deixar o editor processar tudo no final
 
 										scrollToBottom();
 									}
@@ -827,6 +870,31 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 		}
 
 		streaming = false;
+		
+		// Forçar o editor a reprocessar o conteúdo para gerar o JSON correto com links funcionais
+		if (editor && note.data.content.html) {
+			console.log('Enhanced content MD:', note.data.content.md);
+			console.log('Enhanced content HTML:', note.data.content.html);
+			
+			// Pequeno delay para garantir que o streaming terminou completamente
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			// Definir o JSON como null para forçar o RichTextInput a processar o HTML
+			note.data.content.json = null;
+			
+			// Aguardar o próximo ciclo de renderização
+			await tick();
+			
+			// Aguardar mais um pouco para o editor processar
+			await new Promise(resolve => setTimeout(resolve, 200));
+			
+			// Verificar se o editor processou corretamente
+			if (editor.getJSON) {
+				const newJson = editor.getJSON();
+				console.log('Editor JSON after enhance:', newJson);
+				note.data.content.json = newJson;
+			}
+		}
 	};
 
 	const onDragOver = (e) => {
@@ -1030,6 +1098,29 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 									</div>
 								</button>
 							</div>
+
+							<button
+								class="flex-none p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition mr-1"
+								on:click={() => {
+									goto('/notes');
+								}}
+								title={$i18n.t('Back to Notes')}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="size-5"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+									/>
+								</svg>
+							</button>
 
 							<input
 								class="w-full text-2xl font-medium bg-transparent outline-hidden"
@@ -1277,6 +1368,7 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 							user={$user}
 							link={true}
 							image={true}
+							youtube={true}
 							{files}
 							placeholder={$i18n.t('Write something...')}
 							editable={versionIdx === null && !editing}
@@ -1390,93 +1482,133 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 						/>
 					</div>
 				{:else}
-					<RecordMenu
-						onRecord={async () => {
-							displayMediaRecord = false;
+					<div></div>
+					<div class="flex gap-1">
+						<RecordMenu
+							onRecord={async () => {
+								displayMediaRecord = false;
 
-							try {
-								let stream = await navigator.mediaDevices
-									.getUserMedia({ audio: true })
-									.catch(function (err) {
-										toast.error(
-											$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
-												error: err
-											})
-										);
-										return null;
-									});
+								try {
+									let stream = await navigator.mediaDevices
+										.getUserMedia({ audio: true })
+										.catch(function (err) {
+											toast.error(
+												$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
+													error: err
+												})
+											);
+											return null;
+										});
 
-								if (stream) {
-									recording = true;
-									const tracks = stream.getTracks();
-									tracks.forEach((track) => track.stop());
+									if (stream) {
+										recording = true;
+										const tracks = stream.getTracks();
+										tracks.forEach((track) => track.stop());
+									}
+									stream = null;
+								} catch {
+									toast.error($i18n.t('Permission denied when accessing microphone'));
 								}
-								stream = null;
-							} catch {
-								toast.error($i18n.t('Permission denied when accessing microphone'));
-							}
-						}}
-						onCaptureAudio={async () => {
-							displayMediaRecord = true;
+							}}
+							onCaptureAudio={async () => {
+								displayMediaRecord = true;
 
-							recording = true;
-						}}
-						onUpload={async () => {
-							const input = document.createElement('input');
-							input.type = 'file';
-							input.accept = 'audio/*';
-							input.multiple = false;
-							input.click();
+								recording = true;
+							}}
+							onUpload={async () => {
+								const input = document.createElement('input');
+								input.type = 'file';
+								input.accept = 'audio/*';
+								input.multiple = false;
+								input.click();
 
-							input.onchange = async (e) => {
-								const files = e.target.files;
+								input.onchange = async (e) => {
+									const files = e.target.files;
 
-								if (files && files.length > 0) {
-									await uploadFileHandler(files[0]);
-								}
-							};
-						}}
-					>
-						<Tooltip content={$i18n.t('Record')} placement="top">
-							<div
-								class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
-							>
-								<MicSolid className="size-4.5" />
-							</div>
-						</Tooltip>
-					</RecordMenu>
-
-					<div
-						class="cursor-pointer flex gap-0.5 rounded-full border border-gray-50 dark:border-gray-850 dark:bg-gray-850 transition shadow-xl"
-					>
-						<Tooltip content={$i18n.t('AI')} placement="top">
-							{#if editing}
-								<button
-									class="p-2 flex justify-center items-center hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition shrink-0"
-									on:click={() => {
-										stopResponseHandler();
-									}}
-									type="button"
+									if (files && files.length > 0) {
+										await uploadFileHandler(files[0]);
+									}
+								};
+							}}
+						>
+							<Tooltip content={$i18n.t('Record')} placement="top">
+								<div
+									class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
 								>
-									<Spinner className="size-5" />
-								</button>
-							{:else}
-								<AiMenu
-									onEdit={() => {
-										enhanceNoteHandler();
-									}}
-									onChat={() => {
-										showPanel = true;
-										selectedPanel = 'chat';
-									}}
-								>
-									<div
+									<MicSolid className="size-4.5" />
+								</div>
+							</Tooltip>
+						</RecordMenu>
+						<div
+							class="cursor-pointer flex gap-0.5 rounded-full border border-gray-50 dark:border-gray-850 dark:bg-gray-850 transition shadow-xl"
+						>
+							<Tooltip content={$i18n.t('AI')} placement="top">
+								{#if editing}
+									<button
+										class="p-2 flex justify-center items-center hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition shrink-0"
+										on:click={() => {
+											stopResponseHandler();
+										}}
+										type="button"
+									>
+										<Spinner className="size-5" />
+									</button>
+								{:else}
+									<button
+										type="button"
+										on:click={() => {
+											enhanceNoteHandler();
+										}}
 										class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
 									>
 										<SparklesSolid />
-									</div>
-								</AiMenu>
-							{/if}
+									</button>
+								{/if}
+							</Tooltip>
+						</div>
+
+						<Tooltip content={$i18n.t('Create New Note')} placement="top">
+							<button
+								class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
+								aria-label="Create New Note"
+								on:click={async () => {
+									const { createNewNote } = await import('$lib/apis/notes');
+									const dayjs = (await import('$lib/dayjs')).default;
+									
+									const res = await createNewNote(localStorage.token, {
+										title: dayjs().format('YYYY-MM-DD'),
+										data: {
+											content: {
+												json: null,
+												html: '',
+												md: ''
+											}
+										},
+										meta: null,
+										access_control: {},
+										folder_id: null
+									});
+									
+									if (res) {
+										window.location.href = `/notes/${res.id}`;
+									}
+								}}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="size-4.5"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M12 4.5v15m7.5-7.5h-15"
+									/>
+								</svg>
+							</button>
 						</Tooltip>
 					</div>
 				{/if}
@@ -1494,7 +1626,6 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 				bind:streaming
 				bind:stopResponseFlag
 				{editor}
-				{inputElement}
 				{selectedContent}
 				{files}
 				onInsert={insertHandler}

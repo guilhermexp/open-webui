@@ -7,7 +7,7 @@
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	const i18n: Writable<i18nType> = getContext('i18n');
 
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 
 	import { get, type Unsubscriber, type Writable } from 'svelte/store';
@@ -152,7 +152,6 @@
 		loading = true;
 
 		prompt = '';
-		messageInput?.setText('');
 
 		files = [];
 		selectedToolIds = [];
@@ -176,7 +175,7 @@
 					const input = JSON.parse(storageChatInput);
 
 					if (!$temporaryChatEnabled) {
-						messageInput?.setText(input.prompt);
+						prompt = input.prompt;
 						files = input.files;
 						selectedToolIds = input.selectedToolIds;
 						selectedFilterIds = input.selectedFilterIds;
@@ -199,7 +198,7 @@
 
 		if (type === 'prompt') {
 			// Handle prompt selection
-			messageInput?.setText(data);
+			prompt = data;
 		}
 	};
 
@@ -428,7 +427,7 @@
 			const inputElement = document.getElementById('chat-input');
 
 			if (inputElement) {
-				messageInput?.setText(event.data.text);
+				prompt = event.data.text;
 				inputElement.focus();
 			}
 		}
@@ -477,7 +476,7 @@
 
 		if (storageChatInput) {
 			prompt = '';
-			messageInput?.setText('');
+			prompt = '';
 
 			files = [];
 			selectedToolIds = [];
@@ -490,7 +489,7 @@
 				const input = JSON.parse(storageChatInput);
 
 				if (!$temporaryChatEnabled) {
-					messageInput?.setText(input.prompt);
+					prompt = input.prompt;
 					files = input.files;
 					selectedToolIds = input.selectedToolIds;
 					selectedFilterIds = input.selectedFilterIds;
@@ -801,7 +800,7 @@
 		await showArtifacts.set(false);
 
 		if ($page.url.pathname.includes('/c/')) {
-			window.history.replaceState(history.state, '', `/`);
+			replaceState(`/`, '');
 		}
 
 		autoScroll = true;
@@ -861,7 +860,7 @@
 
 		if ($page.url.searchParams.get('q')) {
 			const q = $page.url.searchParams.get('q') ?? '';
-			messageInput?.setText(q);
+			prompt = q;
 
 			if (q) {
 				if (($page.url.searchParams.get('submit') ?? 'true') === 'true') {
@@ -1004,10 +1003,11 @@
 			for (const message of res.messages) {
 				if (message?.id) {
 					// Add null check for message and message.id
+					const existingMessage = history.messages[message.id];
 					history.messages[message.id] = {
-						...history.messages[message.id],
-						...(history.messages[message.id].content !== message.content
-							? { originalContent: history.messages[message.id].content }
+						...(existingMessage || {}),
+						...(existingMessage && existingMessage.content !== message.content
+							? { originalContent: existingMessage.content }
 							: {}),
 						...message
 					};
@@ -1099,7 +1099,7 @@
 	};
 
 	const createMessagePair = async (userPrompt) => {
-		messageInput?.setText('');
+		prompt = '';
 		if (selectedModels.length === 0) {
 			toast.error($i18n.t('Model not selected'));
 		} else {
@@ -1126,9 +1126,7 @@
 				parentId: userMessageId,
 				childrenIds: [],
 				role: 'assistant',
-				content: `[RESPONSE] ${responseMessageId}`,
-				done: true,
-
+				content: '',
 				model: modelId,
 				modelName: model.name ?? model.id,
 				modelIdx: 0,
@@ -1155,6 +1153,9 @@
 			} else {
 				await saveChatHandler($chatId, history);
 			}
+
+			// Send the prompt to get the actual response
+			await sendPrompt(history, userPrompt || '', userMessageId, { newChat: messages.length === 0 });
 		}
 	};
 
@@ -1428,7 +1429,7 @@
 			return;
 		}
 
-		messageInput?.setText('');
+		prompt = '';
 
 		// Reset chat input textarea
 		if (!($settings?.richTextInput ?? true)) {
@@ -1449,7 +1450,7 @@
 		);
 
 		files = [];
-		messageInput?.setText('');
+		prompt = '';
 
 		// Create user message
 		let userMessageId = uuidv4();
@@ -1540,15 +1541,20 @@
 		history = history;
 
 		// Create new chat if newChat is true and first user message
-		if (newChat && _history.messages[_history.currentId].parentId === null) {
-			_chatId = await initChatHandler(_history);
+		if (newChat && history.messages[history.currentId] && history.messages[history.currentId].parentId === null) {
+			_chatId = await initChatHandler(history);
+			if (!_chatId) {
+				console.error('Failed to initialize chat');
+				return;
+			}
 		}
 
 		await tick();
 
+		// Update _history with the newly created messages before saving
 		_history = JSON.parse(JSON.stringify(history));
 		// Save chat after all messages have been created
-		await saveChatHandler(_chatId, _history);
+		await saveChatHandler(_chatId, history);
 
 		await Promise.all(
 			selectedModelIds.map(async (modelId, _modelIdx) => {
@@ -1575,7 +1581,7 @@
 					const chatEventEmitter = await getChatEventEmitter(model.id, _chatId);
 
 					scrollToBottom();
-					await sendPromptSocket(_history, model, responseMessageId, _chatId);
+					await sendPromptSocket(history, model, responseMessageId, _chatId);
 
 					if (chatEventEmitter) clearInterval(chatEventEmitter);
 				} else {
@@ -1603,7 +1609,7 @@
 			return fileExists;
 		});
 
-		let files = JSON.parse(JSON.stringify(chatFiles));
+		files = JSON.parse(JSON.stringify(chatFiles));
 		files.push(
 			...(userMessage?.files ?? []).filter((item) =>
 				['doc', 'text', 'file', 'note', 'collection'].includes(item.type)
@@ -1987,33 +1993,43 @@
 		let _chatId = $chatId;
 
 		if (!$temporaryChatEnabled) {
-			chat = await createNewChat(
-				localStorage.token,
-				{
-					id: _chatId,
-					title: $i18n.t('New Chat'),
-					models: selectedModels,
-					system: $settings.system ?? undefined,
-					params: params,
-					history: history,
-					messages: createMessagesList(history, history.currentId),
-					tags: [],
-					timestamp: Date.now()
-				},
-				$selectedFolder?.id
-			);
+			try {
+				chat = await createNewChat(
+					localStorage.token,
+					{
+						id: _chatId,
+						title: $i18n.t('New Chat'),
+						models: selectedModels,
+						system: $settings.system ?? undefined,
+						params: params,
+						history: history,
+						messages: createMessagesList(history, history.currentId),
+						tags: [],
+						timestamp: Date.now()
+					},
+					$selectedFolder?.id
+				);
 
-			_chatId = chat.id;
-			await chatId.set(_chatId);
+				if (!chat || !chat.id) {
+					console.error('Failed to create new chat - invalid response');
+					return null;
+				}
 
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+				_chatId = chat.id;
+				await chatId.set(_chatId);
 
-			await tick();
+				replaceState(`/c/${_chatId}`, '');
 
-			await chats.set(await getChatList(localStorage.token, $currentChatPage));
-			currentChatPage.set(1);
+				await tick();
 
-			selectedFolder.set(null);
+				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				currentChatPage.set(1);
+
+				selectedFolder.set(null);
+			} catch (error) {
+				console.error('Error creating new chat:', error);
+				return null;
+			}
 		} else {
 			_chatId = 'local';
 			await chatId.set('local');
@@ -2024,6 +2040,12 @@
 	};
 
 	const saveChatHandler = async (_chatId, history) => {
+		// Ensure we have a valid chat ID before attempting to update
+		if (!_chatId || _chatId === '') {
+			console.warn('Attempted to save chat without a valid chat ID');
+			return;
+		}
+		
 		if ($chatId == _chatId) {
 			if (!$temporaryChatEnabled) {
 				chat = await updateChatById(localStorage.token, _chatId, {
@@ -2076,7 +2098,7 @@
 	id="chat-container"
 >
 	{#if !loading}
-		<div in:fade={{ duration: 50 }} class="w-full h-full flex flex-col">
+		<div in:fade={{ duration: 50 }} class="w-full h-full flex flex-col bg-gray-50 dark:bg-gray-900">
 			{#if $settings?.backgroundImageUrl ?? $config?.license_metadata?.background_image_url ?? null}
 				<div
 					class="absolute {$showSidebar
@@ -2133,7 +2155,7 @@
 										bind:autoScroll
 										bind:prompt
 										setInputText={(text) => {
-											messageInput?.setText(text);
+											prompt = text;
 										}}
 										{selectedModels}
 										{atSelectedModel}
@@ -2145,7 +2167,7 @@
 										{mergeResponses}
 										{chatActionHandler}
 										{addMessages}
-										bottomPadding={files.length > 0}
+										bottomPadding={files?.length > 0}
 										{onSelect}
 									/>
 								</div>
@@ -2166,7 +2188,6 @@
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel
-									bind:showCommands
 									toolServers={$toolServers}
 									transparentBackground={$settings?.backgroundImageUrl ??
 										$config?.license_metadata?.background_image_url ??
@@ -2215,7 +2236,7 @@
 								</div>
 							</div>
 						{:else}
-							<div class="flex items-center h-full">
+							<div class="flex items-center h-full w-full">
 								<Placeholder
 									{history}
 									{selectedModels}
@@ -2229,7 +2250,6 @@
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel
-									bind:showCommands
 									transparentBackground={$settings?.backgroundImageUrl ??
 										$config?.license_metadata?.background_image_url ??
 										false}

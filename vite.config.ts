@@ -1,45 +1,29 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { execSync } from 'child_process';
 
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+// Get git commit hash for build version
+let commitHash = 'dev';
+try {
+	commitHash = execSync('git rev-parse --short HEAD').toString().trim();
+} catch (error) {
+	console.warn('Could not get git commit hash:', error);
+}
 
 export default defineConfig({
-	plugins: [
-		sveltekit({
-			onwarn: (warning, handler) => {
-				// Suprimir avisos de propriedades exportadas não utilizadas
-				if (warning.code === 'unused-export-let') return;
-				// Suprimir alguns avisos de acessibilidade menos críticos
-				if (warning.code === 'a11y-missing-attribute' && warning.message.includes('alt')) return;
-				if (warning.code === 'a11y-invalid-attribute' && warning.message.includes('href')) return;
-				if (warning.code === 'a11y-no-static-element-interactions') return;
-				// Suprimir erros de variáveis não definidas em componentes específicos
-				if (warning.filename && warning.filename.includes('ChatList.svelte') && warning.message.includes("'show' is not defined")) return;
-				// Chamar o handler padrão para outros avisos
-				handler(warning);
-			}
-		}),
-		viteStaticCopy({
-			targets: [
-				{
-					src: 'node_modules/onnxruntime-web/dist/*.jsep.*',
-
-					dest: 'wasm'
-				}
-			]
-		})
-	],
+	plugins: [sveltekit()],
 	define: {
-		APP_VERSION: JSON.stringify(process.env.npm_package_version),
-		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build')
+		APP_VERSION: JSON.stringify('0.6.18'),
+		APP_BUILD_HASH: JSON.stringify(commitHash)
 	},
-	build: {
-		sourcemap: true
-	},
-	worker: {
-		format: 'es'
-	},
-	esbuild: {
-		pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug']
+	server: {
+		port: 5173,
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8082',
+				changeOrigin: true,
+				secure: false
+			}
+		}
 	}
 });

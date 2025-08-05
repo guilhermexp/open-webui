@@ -20,6 +20,10 @@ __pycache__/
 static/pyodide/*
 !static/pyodide/pyodide-lock.json
 
+# Zero email build files
+static/zero/
+zero.config.json
+
 # Distribution / packaging
 .Python
 build/
@@ -307,3 +311,19 @@ dist
 cypress/videos
 cypress/screenshots
 .vscode/settings.json
+
+# Test and debug files
+test_audio.html
+test_audio_api.py
+debug_*.js
+*_backup.svelte
+*_old.svelte
+test-*.sh
+start_*.sh
+setup-*.sh
+install-*.sh
+restart_*.sh
+AUDIO_TRANSCRIPTION_TEST.md
+CHAT_RESTORATION_SUMMARY.md
+CHAT_MODIFICATIONS_SUMMARY.md
+ANALISE_OPEN_WEBUI.md

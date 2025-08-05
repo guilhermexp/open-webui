@@ -59,62 +59,62 @@
 	};
 
 	$: if (suggestionPrompts) {
-		sortedPrompts = [...(suggestionPrompts ?? [])].sort(() => Math.random() - 0.5);
+		// Se não houver prompts, use os padrão
+		const defaultPrompts = [
+			{ title: ['Show me a code snippet'], content: 'Show me a code snippet example', icon: 'camera' },
+			{ title: ['Overcome procrastination'], content: 'Help me overcome procrastination and be more productive', icon: 'target' },
+			{ title: ['Explain options trading'], content: 'Explain the basics of options trading', icon: 'users' }
+		];
+		
+		sortedPrompts = suggestionPrompts.length > 0 
+			? [...(suggestionPrompts ?? [])].sort(() => Math.random() - 0.5)
+			: defaultPrompts;
 		getFilteredPrompts(inputValue);
 	}
 </script>
 
-<div class="mb-1 flex gap-1 text-xs font-medium items-center text-gray-600 dark:text-gray-400">
+<div class="w-full">
 	{#if filteredPrompts.length > 0}
-		<Bolt />
-		{$i18n.t('Suggested')}
-	{:else}
-		<!-- Keine Vorschläge -->
-
-		<div
-			class="flex w-full {$settings?.landingPageMode === 'chat'
-				? ' -mt-1'
-				: 'text-center items-center justify-center'}  self-start text-gray-600 dark:text-gray-400"
-		>
-			{$WEBUI_NAME} ‧ v{WEBUI_VERSION}
-		</div>
-	{/if}
-</div>
-
-<div class="h-40 w-full">
-	{#if filteredPrompts.length > 0}
-		<div role="list" class="max-h-40 overflow-auto scrollbar-none items-start {className}">
-			{#each filteredPrompts as prompt, idx (prompt.id || prompt.content)}
-				<!-- svelte-ignore a11y-no-interactive-element-to-noninteractive-role -->
+		<div role="list" class="flex flex-wrap gap-3 justify-center {className}">
+			{#each filteredPrompts.slice(0, 3) as prompt, idx (prompt.id || prompt.content)}
 				<button
 					role="listitem"
-					class="waterfall flex flex-col flex-1 shrink-0 w-full justify-between
-				       px-3 py-2 rounded-xl bg-transparent hover:bg-black/5
-				       dark:hover:bg-white/5 transition group"
-					style="animation-delay: {idx * 60}ms"
+					class="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gray-50 dark:bg-gray-800 
+					       border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-750
+					       transition-all duration-200 text-sm font-medium"
 					on:click={() => onSelect({ type: 'prompt', data: prompt.content })}
 				>
-					<div class="flex flex-col text-left">
-						{#if prompt.title && prompt.title[0] !== ''}
-							<div
-								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
-							>
-								{prompt.title[0]}
+					<div class="w-4 h-4">
+						{#if prompt.icon === 'camera' || idx === 0}
+							<!-- Ícone verde para "Show me a code snippet" -->
+							<div class="w-full h-full border-2 border-green-500 rounded-full flex items-center justify-center">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-2.5 h-2.5 text-green-500">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+								</svg>
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
-								{prompt.title[1]}
+						{:else if prompt.icon === 'target' || idx === 1}
+							<!-- Ícone rosa para "Overcome procrastination" -->
+							<div class="w-full h-full border-2 border-pink-500 rounded-full flex items-center justify-center">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-2.5 h-2.5 text-pink-500">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
 							</div>
 						{:else}
-							<div
-								class="font-medium dark:text-gray-300 dark:group-hover:text-gray-200 transition line-clamp-1"
-							>
-								{prompt.content}
-							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400 font-normal line-clamp-1">
-								{$i18n.t('Prompt')}
+							<!-- Ícone amarelo para "Explain options trading" -->
+							<div class="w-full h-full border-2 border-yellow-500 rounded-full flex items-center justify-center">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-2.5 h-2.5 text-yellow-500">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+								</svg>
 							</div>
 						{/if}
 					</div>
+					<span class="text-gray-700 dark:text-gray-300">
+						{#if prompt.title && prompt.title[0] !== ''}
+							{prompt.title[0]}
+						{:else}
+							{prompt.content.substring(0, 30)}{prompt.content.length > 30 ? '...' : ''}
+						{/if}
+					</span>
 				</button>
 			{/each}
 		</div>

@@ -52,6 +52,12 @@ python -m uvicorn open_webui.main:app --port 8082 --host 0.0.0.0 --reload
 # Run backend tests
 pytest
 
+# Run specific test file
+pytest test/apps/webui/routers/test_users.py
+
+# Run with coverage
+pytest --cov=open_webui
+
 # Format Python code
 black . --exclude ".venv/|/venv/"
 
@@ -72,6 +78,12 @@ docker run -d -p 3000:8080 -v open-webui:/app/backend/data --name open-webui ghc
 
 # With GPU support
 docker run -d -p 3000:8080 --gpus all -v open-webui:/app/backend/data --name open-webui ghcr.io/open-webui/open-webui:cuda
+
+# Docker Compose (for development)
+docker compose up -d
+
+# Build local Docker image
+docker build -t open-webui .
 ```
 
 ## Architecture Overview
@@ -108,6 +120,8 @@ docker run -d -p 3000:8080 --gpus all -v open-webui:/app/backend/data --name ope
 3. **Real-time Updates**: Socket.IO for collaborative editing and live chat updates
 4. **Plugin System**: Extensible architecture supporting custom tools and functions
 5. **MCP Integration**: Model Context Protocol for external tool integration
+6. **RAG System**: Document processing with multiple vector database backends
+7. **Multi-Model Support**: Simultaneous conversations with different LLM providers
 
 ### Database Migrations
 ```bash
@@ -141,6 +155,14 @@ Backend environment variables (set in `backend/dev.sh` or environment):
    - Full MCP server support (STDIO, HTTP, WebSocket)
    - Tool synchronization and management
    - UI components for server configuration
+   - Smithery integration for tool discovery
+
+3. **Note Folders Feature**:
+   - Hierarchical organization of notes
+   - Enhanced `NoteEditor.svelte` component
+
+4. **CORS Fixes**:
+   - Development environment properly configured
 
 ### Testing
 
@@ -157,6 +179,9 @@ pytest --cov=open_webui
 
 # Run frontend tests
 npm run test:frontend
+
+# Run E2E tests with Cypress
+npm run test:e2e  # or npx cypress run
 ```
 
 ### Key Dependencies
@@ -167,6 +192,7 @@ Frontend:
 - Socket.IO client
 - Chart.js
 - Mermaid
+- Pyodide (Python in browser)
 
 Backend:
 - FastAPI
@@ -175,6 +201,7 @@ Backend:
 - Various AI provider SDKs (OpenAI, Anthropic, Google)
 - youtube-transcript-api
 - MCP SDK
+- ChromaDB/Milvus/Qdrant/Pinecone (vector databases)
 
 ### Development Tips
 
@@ -184,3 +211,5 @@ Backend:
 4. Check `docs/` directory for detailed documentation on specific features
 5. MCP servers are configured per-user and stored in the database
 6. Tool IDs follow the pattern: `mcp_{server_id}_{tool_name}`
+7. Use `./backend/dev.sh` script for quick backend development setup
+8. E2E tests run against `http://localhost:8080` by default

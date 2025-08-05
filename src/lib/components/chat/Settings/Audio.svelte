@@ -209,6 +209,8 @@
 								type="text"
 								bind:value={STTLanguage}
 								placeholder={$i18n.t('e.g. en')}
+								maxlength="2"
+								pattern="[a-zA-Z]{2}"
 								class=" text-sm text-right bg-transparent dark:text-gray-300 outline-hidden"
 							/>
 						</Tooltip>

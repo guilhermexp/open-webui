@@ -2,20 +2,22 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	export let className = 'size-8';
-	export let src = `${WEBUI_BASE_URL}/static/favicon.png`;
+	export let src = '';
 </script>
 
-<img
-	crossorigin="anonymous"
-	src={src === ''
-		? `${WEBUI_BASE_URL}/static/favicon.png`
-		: src.startsWith(WEBUI_BASE_URL) ||
-			  src.startsWith('https://www.gravatar.com/avatar/') ||
-			  src.startsWith('data:') ||
-			  src.startsWith('/')
-			? src
-			: `${WEBUI_BASE_URL}/user.png`}
-	class=" {className} object-cover rounded-full"
-	alt="profile"
-	draggable="false"
-/>
+{#if src && src !== ''}
+	<img
+		crossorigin="anonymous"
+		src={src.startsWith(WEBUI_BASE_URL) ||
+				  src.startsWith('https://www.gravatar.com/avatar/') ||
+				  src.startsWith('data:') ||
+				  src.startsWith('/')
+				? src
+				: `${WEBUI_BASE_URL}/user.png`}
+		class=" {className} object-cover rounded-full"
+		alt="profile"
+		draggable="false"
+	/>
+{:else}
+	<div class="{className} rounded-full bg-gray-200 dark:bg-gray-700"></div>
+{/if}

@@ -5,7 +5,12 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 else
     echo "Creating virtual environment..."
-    python3 -m venv venv
+    # Use Python 3.11 for compatibility
+    if command -v python3.11 &> /dev/null; then
+        python3.11 -m venv venv
+    else
+        python3 -m venv venv
+    fi
     source venv/bin/activate
     echo "Installing dependencies..."
     pip install -r requirements.txt

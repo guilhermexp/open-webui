@@ -1019,7 +1019,8 @@
 									arrow: false,
 									placement: 'top',
 									theme: 'transparent',
-									offset: [0, 2]
+									offset: [0, 2],
+									appendTo: () => document.body
 								}
 							}),
 							FloatingMenu.configure({
@@ -1029,7 +1030,8 @@
 									arrow: false,
 									placement: floatingMenuPlacement,
 									theme: 'transparent',
-									offset: [-12, 4]
+									offset: [-12, 4],
+									appendTo: () => document.body
 								}
 							})
 						]

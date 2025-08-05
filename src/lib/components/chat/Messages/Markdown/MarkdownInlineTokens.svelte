@@ -16,6 +16,7 @@
 	import HtmlToken from './HTMLToken.svelte';
 	import TextToken from './MarkdownInlineTokens/TextToken.svelte';
 	import CodespanToken from './MarkdownInlineTokens/CodespanToken.svelte';
+	import LinkPreview from '../LinkPreview.svelte';
 
 	export let id: string;
 	export let done = true;
@@ -52,6 +53,10 @@
 		{#if token.text}
 			<KatexRenderer content={token.text} displayMode={false} />
 		{/if}
+	{:else if token.type === 'linkPreviewInline'}
+		<div class="block my-2">
+			<LinkPreview url={token.url} />
+		</div>
 	{:else if token.type === 'iframe'}
 		<iframe
 			src="{WEBUI_BASE_URL}/api/v1/files/{token.fileId}/content"

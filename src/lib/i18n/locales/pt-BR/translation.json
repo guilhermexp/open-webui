@@ -938,6 +938,7 @@
 	"Note deleted successfully": "",
 	"Note: If you set a minimum score, the search will only return documents with a score greater than or equal to the minimum score.": "Nota: Se você definir uma pontuação mínima, a pesquisa retornará apenas documentos com pontuação igual ou superior à pontuação mínima.",
 	"Notes": "Notas",
+	"Email": "E-mail",
 	"Notification Sound": "",
 	"Notification Webhook": "",
 	"Notifications": "Notificações",
@@ -1480,5 +1481,7 @@
 	"Your entire contribution will go directly to the plugin developer; Open WebUI does not take any percentage. However, the chosen funding platform might have its own fees.": "Toda a sua contribuição irá diretamente para o desenvolvedor do plugin; o Open WebUI não retém nenhuma porcentagem. No entanto, a plataforma de financiamento escolhida pode ter suas próprias taxas.",
 	"Youtube": "Youtube",
 	"Youtube Language": "",
-	"Youtube Proxy URL": ""
+	"Youtube Proxy URL": "",
+	"Note enhanced and title generated successfully!": "Nota embelezada e título gerado com sucesso!",
+	"Note enhanced successfully!": "Nota embelezada com sucesso!"
 }

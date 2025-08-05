@@ -1,1 +1,11 @@
-{}
+{
+  "name": "Open WebUI",
+  "short_name": "Open WebUI",
+  "description": "User-friendly WebUI for LLMs",
+  "theme_color": "#262626",
+  "background_color": "#262626",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "icons": []
+}

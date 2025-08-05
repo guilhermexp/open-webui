@@ -339,11 +339,14 @@
 							readOnly={true}
 							{selectedModels}
 							bind:history
-							bind:messages
 							autoScroll={true}
+							prompt=""
+							atSelectedModel=""
 							sendPrompt={() => {}}
 							continueResponse={() => {}}
 							regenerateResponse={() => {}}
+							mergeResponses={() => {}}
+							chatActionHandler={() => {}}
 						/>
 					</div>
 				{/if}

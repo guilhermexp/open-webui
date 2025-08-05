@@ -242,35 +242,38 @@ export const Youtube = Node.create<YoutubeOptions>({
 				thumbnail.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 			};
 
-			// Add play button overlay
+			// Add YouTube-style play button overlay
 			const playButton = document.createElement('div');
-			playButton.classList.add(
-				'absolute',
-				'top-1/2',
-				'left-1/2',
-				'transform',
-				'-translate-x-1/2',
-				'-translate-y-1/2',
-				'bg-black',
-				'bg-opacity-80',
-				'rounded-full',
-				'w-20',
-				'h-20',
-				'flex',
-				'items-center',
-				'justify-center',
-				'group-hover:bg-opacity-100',
-				'transition-all'
-			);
+			playButton.style.cssText = `
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				width: 68px;
+				height: 48px;
+				background-color: rgba(0, 0, 0, 0.8);
+				border-radius: 8px;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			`;
+			
+			// Add hover effect
+			playButton.onmouseenter = () => {
+				playButton.style.backgroundColor = '#cc0000';
+			};
+			playButton.onmouseleave = () => {
+				playButton.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+			};
 
-			const playIcon = document.createElement('svg');
-			playIcon.setAttribute('width', '40');
-			playIcon.setAttribute('height', '40');
-			playIcon.setAttribute('viewBox', '0 0 24 24');
-			playIcon.setAttribute('fill', 'white');
-			playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-
-			playButton.appendChild(playIcon);
+			// Create play icon using inline SVG
+			playButton.innerHTML = `
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="white" style="margin-left: 2px;">
+					<path d="M8 5v14l11-7z"/>
+				</svg>
+			`;
 			placeholder.appendChild(thumbnail);
 			placeholder.appendChild(playButton);
 

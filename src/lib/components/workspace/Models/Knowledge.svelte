@@ -97,7 +97,7 @@
 
 		if (
 			($config?.file?.max_count ?? null) !== null &&
-			files.length + inputFiles.length > $config?.file?.max_count
+			selectedItems.length + inputFiles.length > $config?.file?.max_count
 		) {
 			toast.error(
 				$i18n.t(`You can only chat with a maximum of {{maxCount}} file(s) at a time.`, {
@@ -185,9 +185,9 @@
 			<div class=" flex flex-wrap items-center gap-2 mb-2.5">
 				{#each selectedItems as file, fileIdx}
 					<FileItem
-						{file}
 						item={file}
 						name={file.name}
+						size={file.size || 0}
 						modal={true}
 						edit={true}
 						type={file?.legacy

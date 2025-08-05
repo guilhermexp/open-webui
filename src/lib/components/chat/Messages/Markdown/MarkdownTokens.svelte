@@ -22,6 +22,8 @@
 	import Source from './Source.svelte';
 	import { settings } from '$lib/stores';
 	import HtmlToken from './HTMLToken.svelte';
+	import LinkPreview from '../LinkPreview.svelte';
+	import ParagraphWithLinkPreview from './ParagraphWithLinkPreview.svelte';
 
 	export let id: string;
 	export let tokens: Token[];
@@ -286,7 +288,6 @@
 			open={$settings?.expandDetails ?? false}
 			attributes={token?.attributes}
 			className="w-full space-y-1"
-			dir="auto"
 		>
 			<div class=" mb-1.5" slot="content">
 				<svelte:self
@@ -310,14 +311,12 @@
 			onload="this.style.height=(this.contentWindow.document.body.scrollHeight+20)+'px';"
 		></iframe>
 	{:else if token.type === 'paragraph'}
-		<p dir="auto">
-			<MarkdownInlineTokens
-				id={`${id}-${tokenIdx}-p`}
-				tokens={token.tokens ?? []}
-				{done}
-				{onSourceClick}
-			/>
-		</p>
+		<ParagraphWithLinkPreview
+			id={`${id}-${tokenIdx}-p`}
+			tokens={token.tokens ?? []}
+			{done}
+			{onSourceClick}
+		/>
 	{:else if token.type === 'text'}
 		{#if top}
 			<p>
@@ -352,6 +351,8 @@
 		{/if}
 	{:else if token.type === 'space'}
 		<div class="my-2" />
+	{:else if token.type === 'linkPreview'}
+		<LinkPreview url={token.url} />
 	{:else}
 		{console.log('Unknown token', token)}
 	{/if}

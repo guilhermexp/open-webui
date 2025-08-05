@@ -5,6 +5,7 @@
 
 	import markedExtension from '$lib/utils/marked/extension';
 	import markedKatexExtension from '$lib/utils/marked/katex-extension';
+	import linkPreviewExtension from '$lib/utils/marked/link-preview-extension';
 
 	import MarkdownTokens from './Markdown/MarkdownTokens.svelte';
 
@@ -34,6 +35,7 @@
 
 	marked.use(markedKatexExtension(options));
 	marked.use(markedExtension(options));
+	marked.use(linkPreviewExtension(options));
 
 	$: (async () => {
 		if (content) {

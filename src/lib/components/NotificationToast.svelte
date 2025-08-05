@@ -39,7 +39,7 @@
 	}}
 >
 	<div class="shrink-0 self-top -translate-y-0.5">
-		<img src="{WEBUI_BASE_URL}/static/favicon.png" alt="favicon" class="size-7 rounded-full" />
+		<div class="size-7 rounded-full bg-gray-300 dark:bg-gray-700"></div>
 	</div>
 
 	<div>

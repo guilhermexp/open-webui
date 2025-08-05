@@ -3,27 +3,23 @@
 	import { flyAndScale } from '$lib/utils/transitions';
 	import { getContext, onMount, tick } from 'svelte';
 
-	import { config, user, tools as _tools, mobile } from '$lib/stores';
+	import { config, user, mobile, tools, toolServers } from '$lib/stores';
 	import { createPicker } from '$lib/utils/google-drive-picker';
-
 	import { getTools } from '$lib/apis/tools';
 
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import DocumentArrowUpSolid from '$lib/components/icons/DocumentArrowUpSolid.svelte';
-	import Switch from '$lib/components/common/Switch.svelte';
-	import GlobeAltSolid from '$lib/components/icons/GlobeAltSolid.svelte';
-	import WrenchSolid from '$lib/components/icons/WrenchSolid.svelte';
 	import CameraSolid from '$lib/components/icons/CameraSolid.svelte';
 	import PhotoSolid from '$lib/components/icons/PhotoSolid.svelte';
-	import CommandLineSolid from '$lib/components/icons/CommandLineSolid.svelte';
+	import WrenchSolid from '$lib/components/icons/WrenchSolid.svelte';
+	import Switch from '$lib/components/common/Switch.svelte';
 
 	const i18n = getContext('i18n');
 
-	export let selectedToolIds: string[] = [];
-
 	export let selectedModels: string[] = [];
 	export let fileUploadCapableModels: string[] = [];
+	export let selectedToolIds: string[] = [];
 
 	export let screenCaptureHandler: Function;
 	export let uploadFilesHandler: Function;
@@ -34,7 +30,8 @@
 
 	export let onClose: Function;
 
-	let tools = {};
+	let regularToolsMap = {};
+	let servers = {};
 	let show = false;
 	let showAllTools = false;
 
@@ -48,18 +45,79 @@
 		($user?.role === 'admin' || $user?.permissions?.chat?.file_upload);
 
 	const init = async () => {
-		if ($_tools === null) {
-			await _tools.set(await getTools(localStorage.token));
+		if ($tools === null) {
+			await tools.set(await getTools(localStorage.token));
 		}
 
-		tools = $_tools.reduce((a, tool, i, arr) => {
-			a[tool.id] = {
-				name: tool.name,
-				description: tool.meta.description,
-				enabled: selectedToolIds.includes(tool.id)
-			};
-			return a;
-		}, {});
+		// Group MCP tools by server
+		const mcpServers = {};
+		const regularTools = {};
+
+		$tools.forEach(tool => {
+			if (tool.id.startsWith('mcp_')) {
+				// Extract server info from mcp_{server_id}_{tool_name}
+				const parts = tool.id.split('_');
+				if (parts.length >= 3) {
+					const serverId = parts[1];
+					
+					// Get server name from tool manifest if available
+					let serverName = serverId;
+					if (tool.meta?.manifest?.server_name) {
+						serverName = tool.meta.manifest.server_name;
+					} else if (tool.name.includes(':')) {
+						// Extract server name if tool name has format "ServerName: ToolName"
+						const nameParts = tool.name.split(':');
+						if (nameParts.length >= 2) {
+							serverName = nameParts[0].trim();
+						}
+					} else {
+						// Fallback: try to find server in toolServers
+						const serverData = $toolServers.find(server => {
+							// Check if any tools in this server match our serverId
+							return server?.openapi?.info?.title;
+						});
+						
+						if (serverData?.openapi?.info?.title) {
+							serverName = serverData.openapi.info.title;
+						} else {
+							// Last fallback: capitalize the serverId
+							serverName = serverId.charAt(0).toUpperCase() + serverId.slice(1);
+						}
+					}
+					
+					if (!mcpServers[serverId]) {
+						mcpServers[serverId] = {
+							name: serverName,
+							id: serverId,
+							tools: [],
+							enabled: false,
+							expanded: false
+						};
+					}
+					
+					mcpServers[serverId].tools.push({
+						id: tool.id,
+						name: tool.name,
+						description: tool.meta.description,
+						enabled: selectedToolIds.includes(tool.id)
+					});
+					
+					// Server is enabled if any of its tools are enabled
+					if (selectedToolIds.includes(tool.id)) {
+						mcpServers[serverId].enabled = true;
+					}
+				}
+			} else {
+				regularTools[tool.id] = {
+					name: tool.name,
+					description: tool.meta.description,
+					enabled: selectedToolIds.includes(tool.id)
+				};
+			}
+		});
+
+		regularToolsMap = regularTools;
+		servers = mcpServers;
 	};
 
 	const detectMobile = () => {
@@ -107,18 +165,82 @@
 			align="start"
 			transition={flyAndScale}
 		>
-			{#if Object.keys(tools).length > 0}
+			<!-- MCP Servers -->
+			{#if Object.keys(servers).length > 0}
+				<div class="overflow-y-auto scrollbar-thin max-h-64">
+					{#each Object.keys(servers) as serverId}
+						<div class="mb-1">
+							<!-- Server Header -->
+							<button
+								class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+								on:click={() => {
+									// Toggle all tools in server
+									const serverEnabled = !servers[serverId].enabled;
+									servers[serverId].enabled = serverEnabled;
+									
+									servers[serverId].tools.forEach(tool => {
+										tool.enabled = serverEnabled;
+										if (serverEnabled) {
+											if (!selectedToolIds.includes(tool.id)) {
+												selectedToolIds = [...selectedToolIds, tool.id];
+											}
+										} else {
+											selectedToolIds = selectedToolIds.filter(id => id !== tool.id);
+										}
+									});
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<WrenchSolid />
+										</div>
+										<div class="truncate font-semibold">{servers[serverId].name}</div>
+										<div class="text-xs text-gray-500">({servers[serverId].tools.length})</div>
+									</div>
+								</div>
+
+								<div class="shrink-0">
+									<Switch
+										state={servers[serverId].enabled}
+										on:change={async (e) => {
+											const state = e.detail;
+											await tick();
+											servers[serverId].enabled = state;
+											
+											servers[serverId].tools.forEach(tool => {
+												tool.enabled = state;
+												if (state) {
+													if (!selectedToolIds.includes(tool.id)) {
+														selectedToolIds = [...selectedToolIds, tool.id];
+													}
+												} else {
+													selectedToolIds = selectedToolIds.filter(id => id !== tool.id);
+												}
+											});
+										}}
+									/>
+								</div>
+							</button>
+						</div>
+					{/each}
+				</div>
+				<hr class="border-black/5 dark:border-white/5 my-1" />
+			{/if}
+
+			<!-- Regular Tools -->
+			{#if Object.keys(regularToolsMap).length > 0}
 				<div class="{showAllTools ? '' : 'max-h-28'} overflow-y-auto scrollbar-thin">
-					{#each Object.keys(tools) as toolId}
+					{#each Object.keys(regularToolsMap) as toolId}
 						<button
 							class="flex w-full justify-between gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl"
 							on:click={() => {
-								tools[toolId].enabled = !tools[toolId].enabled;
+								regularToolsMap[toolId].enabled = !regularToolsMap[toolId].enabled;
 							}}
 						>
 							<div class="flex-1 truncate">
 								<Tooltip
-									content={tools[toolId]?.description ?? ''}
+									content={regularToolsMap[toolId]?.description ?? ''}
 									placement="top-start"
 									className="flex flex-1 gap-2 items-center"
 								>
@@ -126,13 +248,13 @@
 										<WrenchSolid />
 									</div>
 
-									<div class=" truncate">{tools[toolId].name}</div>
+									<div class=" truncate">{regularToolsMap[toolId].name}</div>
 								</Tooltip>
 							</div>
 
 							<div class=" shrink-0">
 								<Switch
-									state={tools[toolId].enabled}
+									state={regularToolsMap[toolId].enabled}
 									on:change={async (e) => {
 										const state = e.detail;
 										await tick();
@@ -147,7 +269,7 @@
 						</button>
 					{/each}
 				</div>
-				{#if Object.keys(tools).length > 3}
+				{#if Object.keys(regularToolsMap).length > 3}
 					<button
 						class="flex w-full justify-center items-center text-sm font-medium cursor-pointer rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
 						on:click={() => {
@@ -170,7 +292,9 @@
 						</svg>
 					</button>
 				{/if}
-				<hr class="border-black/5 dark:border-white/5 my-1" />
+				{#if Object.keys(regularToolsMap).length > 0}
+					<hr class="border-black/5 dark:border-white/5 my-1" />
+				{/if}
 			{/if}
 
 			<Tooltip

@@ -65,10 +65,16 @@ export const updateAudioConfig = async (token: string, payload: OpenAIConfigForm
 };
 
 export const transcribeAudio = async (token: string, file: File, language?: string) => {
+	console.log('DEBUG: Transcribing audio file:', file.name, 'type:', file.type, 'language:', language);
+	
 	const data = new FormData();
 	data.append('file', file);
-	if (language) {
-		data.append('language', language);
+	
+	// Only append language if it's a valid ISO-639-1 code (2 letter code)
+	if (language && language.length === 2) {
+		data.append('language', language.toLowerCase());
+	} else if (language) {
+		console.warn('Invalid language code:', language, 'Expected ISO-639-1 format (e.g., "en", "pt", "es")');
 	}
 
 	let error = null;
