@@ -835,7 +835,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 ENABLE_DIRECT_CONNECTIONS = PersistentConfig(
     "ENABLE_DIRECT_CONNECTIONS",
     "direct.enable",
-    os.environ.get("ENABLE_DIRECT_CONNECTIONS", "True").lower() == "true",
+    False,  # Disabled - direct connections not needed
 )
 
 ####################################
@@ -845,7 +845,7 @@ ENABLE_DIRECT_CONNECTIONS = PersistentConfig(
 ENABLE_OLLAMA_API = PersistentConfig(
     "ENABLE_OLLAMA_API",
     "ollama.enable",
-    os.environ.get("ENABLE_OLLAMA_API", "True").lower() == "true",
+    False,  # Disabled - using only cloud providers
 )
 
 OLLAMA_API_BASE_URL = os.environ.get(
@@ -1269,7 +1269,7 @@ USER_PERMISSIONS = PersistentConfig(
 ENABLE_CHANNELS = PersistentConfig(
     "ENABLE_CHANNELS",
     "channels.enable",
-    os.environ.get("ENABLE_CHANNELS", "False").lower() == "true",
+    False,  # Disabled - channels not needed for smart notes app
 )
 
 ENABLE_NOTES = PersistentConfig(
@@ -1281,7 +1281,7 @@ ENABLE_NOTES = PersistentConfig(
 ENABLE_EVALUATION_ARENA_MODELS = PersistentConfig(
     "ENABLE_EVALUATION_ARENA_MODELS",
     "evaluation.arena.enable",
-    os.environ.get("ENABLE_EVALUATION_ARENA_MODELS", "True").lower() == "true",
+    False,  # Disabled - evaluation arena not needed
 )
 EVALUATION_ARENA_MODELS = PersistentConfig(
     "EVALUATION_ARENA_MODELS",
@@ -1303,16 +1303,14 @@ WEBHOOK_URL = PersistentConfig(
     "WEBHOOK_URL", "webhook_url", os.environ.get("WEBHOOK_URL", "")
 )
 
-ENABLE_ADMIN_EXPORT = os.environ.get("ENABLE_ADMIN_EXPORT", "True").lower() == "true"
+ENABLE_ADMIN_EXPORT = False  # Disabled - admin export not needed
 
-ENABLE_ADMIN_CHAT_ACCESS = (
-    os.environ.get("ENABLE_ADMIN_CHAT_ACCESS", "True").lower() == "true"
-)
+ENABLE_ADMIN_CHAT_ACCESS = False  # Disabled - admin chat access not needed
 
 ENABLE_COMMUNITY_SHARING = PersistentConfig(
     "ENABLE_COMMUNITY_SHARING",
     "ui.enable_community_sharing",
-    os.environ.get("ENABLE_COMMUNITY_SHARING", "True").lower() == "true",
+    False,  # Disabled - community sharing not needed
 )
 
 ENABLE_MESSAGE_RATING = PersistentConfig(

@@ -1540,8 +1540,8 @@
 		}
 		history = history;
 
-		// Create new chat if newChat is true and first user message
-		if (newChat && history.messages[history.currentId] && history.messages[history.currentId].parentId === null) {
+		// Create new chat if needed (newChat is true or chatId is empty)
+		if ((newChat || !_chatId || _chatId === '') && history.messages[history.currentId]) {
 			_chatId = await initChatHandler(history);
 			if (!_chatId) {
 				console.error('Failed to initialize chat');
@@ -1581,7 +1581,7 @@
 					const chatEventEmitter = await getChatEventEmitter(model.id, _chatId);
 
 					scrollToBottom();
-					await sendPromptSocket(history, model, responseMessageId, _chatId);
+					await sendPromptSocket(_history, model, responseMessageId, _chatId);
 
 					if (chatEventEmitter) clearInterval(chatEventEmitter);
 				} else {
@@ -1596,7 +1596,20 @@
 
 	const sendPromptSocket = async (_history, model, responseMessageId, _chatId) => {
 		const chatMessages = createMessagesList(history, history.currentId);
-		const responseMessage = _history.messages[responseMessageId];
+		let responseMessage = _history.messages[responseMessageId];
+		
+		if (!responseMessage) {
+			console.warn('Response message not found:', responseMessageId, '- retrying...');
+			// Try to get the message again after a short delay
+			await new Promise(resolve => setTimeout(resolve, 100));
+			const retryMessage = _history.messages[responseMessageId];
+			if (!retryMessage) {
+				console.error('Response message still not found after retry:', responseMessageId);
+				return;
+			}
+			responseMessage = retryMessage;
+		}
+		
 		const userMessage = _history.messages[responseMessage.parentId];
 
 		const chatMessageFiles = chatMessages

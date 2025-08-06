@@ -107,6 +107,12 @@
 				);
 
 				if (res?.blob) {
+					// Ensure blob is valid before creating URL
+					if (!(res.blob instanceof Blob)) {
+						console.error('Invalid blob response from TTS');
+						loadingSpeech = false;
+						return;
+					}
 					const audio = new Audio(URL.createObjectURL(res.blob));
 					audio.playbackRate = $settings.audio?.tts?.playbackRate ?? 1;
 					

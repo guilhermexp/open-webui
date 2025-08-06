@@ -12,7 +12,7 @@
 	import { createEventDispatcher, onMount, getContext, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	import { deleteModel, getOllamaVersion, pullModel, unloadModel } from '$lib/apis/ollama';
+	// import { deleteModel, getOllamaVersion, pullModel, unloadModel } from '$lib/apis/ollama'; // Removed - Ollama not needed
 
 	import {
 		user,
@@ -211,7 +211,9 @@
 
 					for (const line of lines) {
 						if (line !== '') {
-							let data = JSON.parse(line);
+							// Handle both SSE format (data: {...}) and plain JSON ({...})
+							let jsonStr = line.startsWith('data: ') ? line.slice(6) : line;
+							let data = JSON.parse(jsonStr);
 							console.log(data);
 							if (data.error) {
 								throw data.error;
@@ -289,7 +291,7 @@
 	};
 
 	onMount(async () => {
-		ollamaVersion = await getOllamaVersion(localStorage.token).catch((error) => false);
+		ollamaVersion = false; // Ollama disabled - using only cloud providers
 
 		if (items) {
 			tags = items
@@ -319,19 +321,7 @@
 	};
 
 	const unloadModelHandler = async (model: string) => {
-		const res = await unloadModel(localStorage.token, model).catch((error) => {
-			toast.error($i18n.t('Error unloading model: {{error}}', { error }));
-		});
-
-		if (res) {
-			toast.success($i18n.t('Model unloaded successfully'));
-			models.set(
-				await getModels(
-					localStorage.token,
-					$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
-				)
-			);
-		}
+		return; // Ollama disabled - using only cloud providers
 	};
 </script>
 
@@ -539,7 +529,7 @@
 						<button
 							class="flex w-full font-medium line-clamp-1 select-none items-center rounded-button py-2 pl-3 pr-1.5 text-sm text-gray-700 dark:text-gray-100 outline-hidden transition-all duration-75 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer data-highlighted:bg-muted"
 							on:click={() => {
-								pullModelHandler();
+								// pullModelHandler(); // Ollama disabled
 							}}
 						>
 							<div class=" truncate">

@@ -19,7 +19,7 @@
 	import { toast } from 'svelte-sonner';
 
 	import { goto } from '$app/navigation';
-	import { extractYoutubeUrls, processWebUrl } from '$lib/apis/retrieval';
+	import { extractYoutubeUrls, extractInstagramUrls, processWebUrl } from '$lib/apis/retrieval';
 
 	import dayjs from '$lib/dayjs';
 	import calendar from 'dayjs/plugin/calendar';
@@ -289,9 +289,25 @@ ${content}
 	};
 
 	async function enhanceNoteHandler() {
-		if (selectedModelId === '') {
-			toast.error($i18n.t('Please select a model.'));
+		console.log('Enhance note handler called');
+		console.log('Selected model:', selectedModelId);
+		console.log('Available models:', $models);
+		
+		// Check if user is authenticated
+		if (!localStorage.token) {
+			toast.error($i18n.t('You must be logged in to enhance notes'));
 			return;
+		}
+		
+		if (!selectedModelId || selectedModelId === '') {
+			// Try to auto-select a model
+			if ($models && $models.length > 0) {
+				selectedModelId = $models[0].id;
+				console.log('Auto-selected model:', selectedModelId);
+			} else {
+				toast.error($i18n.t('No models available. Please configure a model in settings.'));
+				return;
+			}
 		}
 
 		const model = $models
@@ -300,6 +316,7 @@ ${content}
 
 		if (!model) {
 			selectedModelId = '';
+			toast.error($i18n.t('Selected model not found or not accessible'));
 			return;
 		}
 
@@ -695,6 +712,14 @@ ${content}
 	};
 
 	const enhanceCompletionHandler = async (model) => {
+		console.log('Starting enhanceCompletionHandler with model:', model);
+		
+		if (!model || !model.id) {
+			console.error('Invalid model provided to enhanceCompletionHandler');
+			toast.error($i18n.t('Invalid model selected'));
+			return;
+		}
+		
 		stopResponseFlag = false;
 		let enhancedContent = {
 			json: null,
@@ -711,7 +736,10 @@ ${content}
 			
 			// Check for YouTube URLs in the note
 			try {
+				console.log('Extracting YouTube URLs from:', note.data.content.md);
 				const youtubeResult = await extractYoutubeUrls(localStorage.token, note.data.content.md);
+				console.log('YouTube extraction result:', youtubeResult);
+				
 				if (youtubeResult?.youtube_urls && youtubeResult.youtube_urls.length > 0) {
 					for (const urlData of youtubeResult.youtube_urls) {
 						if (urlData.content) {
@@ -723,21 +751,57 @@ ${content}
 				}
 			} catch (ytError) {
 				console.error('YouTube extraction error:', ytError);
+				if (ytError.message?.includes('404')) {
+					console.warn('YouTube extraction API not available');
+				}
+			}
+			
+			// Check for Instagram URLs in the note
+			try {
+				const instagramResult = await extractInstagramUrls(localStorage.token, note.data.content.md);
+				if (instagramResult?.instagram_urls && instagramResult.instagram_urls.length > 0) {
+					for (const urlData of instagramResult.instagram_urls) {
+						if (urlData.content) {
+							extractedContext += `\n\nInstagram Reel (${urlData.url}):\n`;
+							if (urlData.author) {
+								extractedContext += `Autor: @${urlData.author}\n`;
+							}
+							extractedContext += `${urlData.content}\n`;
+						} else if (urlData.error) {
+							console.warn(`Instagram extraction failed for ${urlData.url}:`, urlData.error);
+						}
+					}
+				}
+			} catch (igError) {
+				console.error('Instagram extraction error:', igError);
 			}
 			
 			// Check for other web URLs
 			const urlPattern = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
 			const urls = note.data.content.md.match(urlPattern) || [];
-			const nonYoutubeUrls = urls.filter(url => !url.includes('youtube.com') && !url.includes('youtu.be'));
+			const nonYoutubeUrls = urls.filter(url => 
+				!url.includes('youtube.com') && 
+				!url.includes('youtu.be') &&
+				!url.includes('instagram.com') &&
+				!url.includes('instagr.am')
+			);
 			
 			for (const url of nonYoutubeUrls) {
 				try {
+					console.log(`Processing web URL: ${url}`);
 					const webResult = await processWebUrl(localStorage.token, url);
-					if (webResult?.content) {
-						extractedContext += `\n\nWeb Content (${url}):\n${webResult.content}\n`;
+					console.log('Web extraction result:', webResult);
+					
+					// Check for content in different possible locations
+					const content = webResult?.file?.data?.content || webResult?.content;
+					if (content) {
+						extractedContext += `\n\nWeb Content (${url}):\n${content}\n`;
+						console.log(`Web content extracted from ${url}, length: ${content.length}`);
+					} else {
+						console.warn(`No content found for ${url}`);
 					}
 				} catch (webErr) {
-					console.warn(`Web extraction failed for ${url}:`, webErr);
+					console.error(`Web extraction failed for ${url}:`, webErr);
 				}
 			}
 			
@@ -751,45 +815,57 @@ ${content}
 			console.error('Error during URL extraction:', err);
 		}
 
-		const systemPrompt = `Você é um assistente especializado em criar notas detalhadas e bem estruturadas. Sua tarefa é aprimorar as notas existentes incorporando informações relevantes do contexto fornecido (transcrições de vídeo, conteúdo web, ou arquivos).
+		const systemPrompt = `Você é um assistente especializado em criar notas detalhadas e bem estruturadas. Sua tarefa é aprimorar as notas existentes incorporando APENAS as informações REAIS do contexto fornecido.
 
-# Instruções:
+# REGRAS CRÍTICAS:
 
-1. **Mantenha e expanda** o conteúdo original das notas
-2. **Integre naturalmente** as informações do contexto fornecido
+1. **USE APENAS O CONTEÚDO REAL FORNECIDO** - NUNCA invente, simule ou crie informações fictícias
+2. **Se não houver contexto extraído**, apenas formate melhor as notas existentes
 3. **PRESERVE TODOS OS LINKS**: Mantenha TODOS os links (URLs) exatamente como estão no formato markdown [texto](url)
-4. **Estruture o conteúdo** usando markdown apropriado:
+4. **Base-se EXCLUSIVAMENTE** no conteúdo fornecido entre as tags <context></context>
+
+# Instruções de Formatação:
+
+1. **Mantenha e expanda** o conteúdo original das notas usando APENAS informações reais do contexto
+2. **Estruture o conteúdo** usando markdown apropriado:
    - Use # ## ### para hierarquia de títulos
    - Use **negrito** para conceitos importantes
    - Use listas numeradas ou com marcadores quando apropriado
-   - Use > para citações relevantes
-   - Use \`código\` para termos técnicos quando aplicável
+   - Use > para citações diretas do conteúdo extraído
    - **IMPORTANTE**: Todos os links devem ser mantidos no formato [texto do link](URL completa)
 
-5. **Para vídeos do YouTube**, crie uma estrutura como:
-   - Título e informações básicas
-   - Resumo executivo
-   - Pontos principais discutidos
-   - Detalhes importantes por tópico
-   - Conclusões ou takeaways
-   - **Mantenha o link do YouTube** no formato [título ou descrição](URL do YouTube)
+3. **Para vídeos do YouTube com transcrição**, organize:
+   - Título e link original
+   - Resumo baseado NA TRANSCRIÇÃO REAL
+   - Pontos principais MENCIONADOS NA TRANSCRIÇÃO
+   - **Mantenha o link do YouTube** no formato [título](URL)
 
-6. **Para conteúdo web**, organize:
-   - Informações principais do artigo
-   - Dados e fatos relevantes
-   - Análises ou insights
-   - **Preserve o link original** no formato [título ou descrição](URL do site)
+4. **Para conteúdo web extraído**, organize:
+   - Informações REAIS extraídas do site
+   - Dados e fatos PRESENTES NO CONTEÚDO
+   - **Preserve o link original** no formato [título](URL)
 
-7. **Mantenha o idioma** consistente com as notas originais
+# PROIBIDO:
+
+- NUNCA invente informações que não estão no contexto
+- NUNCA adicione dados fictícios ou exemplos genéricos
+- NUNCA simule conteúdo se a extração falhar
+- Se não houver conteúdo extraído para uma URL, apenas mantenha o link original
 
 # Formato de Saída:
 
-Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adicionais. TODOS os links devem estar preservados no formato markdown.`;
+Retorne APENAS o markdown formatado das notas aprimoradas com informações REAIS. TODOS os links devem estar preservados.`;
 
 		const contextContent = 
 			(files && files.length > 0
 				? files.map((file) => `${file.name}: ${file?.file?.data?.content ?? 'Could not extract content'}\n`).join('')
 				: '') + extractedContext;
+
+		// Log the actual context being sent
+		console.log('Context content being sent to model:');
+		console.log('Original notes:', note.data.content.md);
+		console.log('Extracted context:', extractedContext || 'No context extracted');
+		console.log('Total context length:', contextContent.length);
 
 		const [res, controller] = await chatCompletion(
 			localStorage.token,
@@ -867,6 +943,31 @@ Retorne APENAS o markdown formatado das notas aprimoradas, sem explicações adi
 					console.log(error);
 				}
 			}
+		} else if (res) {
+			// Handle error response
+			streaming = false;
+			editing = false;
+			
+			let errorMessage = 'Failed to enhance note';
+			try {
+				const errorData = await res.json();
+				errorMessage = errorData.detail || errorMessage;
+				
+				// Check for specific error types
+				if (res.status === 401) {
+					errorMessage = 'Authentication failed. Please log in again.';
+				} else if (res.status === 400 && errorMessage.includes('Model not found')) {
+					errorMessage = 'Selected model not found. Please select a different model.';
+				} else if (res.status === 403) {
+					errorMessage = 'You do not have access to the selected model.';
+				}
+			} catch (e) {
+				console.error('Error parsing error response:', e);
+			}
+			
+			toast.error(errorMessage);
+			console.error('Enhancement failed:', res.status, errorMessage);
+			return;
 		}
 
 		streaming = false;

@@ -1698,6 +1698,108 @@ def extract_youtube_urls_from_text(
         )
 
 
+class ExtractInstagramUrlsForm(BaseModel):
+    text: str
+
+
+@router.post("/extract/instagram/urls")
+def extract_instagram_urls_from_text(
+    request: Request, form_data: ExtractInstagramUrlsForm, user=Depends(get_verified_user)
+):
+    """Extract Instagram Reels URLs from text and prepare for transcription."""
+    import re
+    
+    log.info(f"Instagram URL extraction called with text: {form_data.text[:100]}...")
+    
+    try:
+        from open_webui.retrieval.loaders.instagram import _parse_reel_id, InstagramReelLoader
+    except ImportError as e:
+        log.error(f"Failed to import Instagram loader: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Instagram loader not available. Please install instaloader."
+        )
+    
+    try:
+        # Pattern to match Instagram URLs
+        instagram_patterns = [
+            r'(?:https?://)?(?:www\.)?instagram\.com/reel/[\w-]+/?',
+            r'(?:https?://)?(?:www\.)?instagram\.com/reels/[\w-]+/?',
+            r'(?:https?://)?(?:www\.)?instagram\.com/p/[\w-]+/?',
+            r'(?:https?://)?instagr\.am/p/[\w-]+/?',
+        ]
+        
+        # Find all Instagram URLs in the text
+        instagram_urls = []
+        for pattern in instagram_patterns:
+            urls = re.findall(pattern, form_data.text)
+            instagram_urls.extend(urls)
+        
+        # Remove duplicates
+        instagram_urls = list(set(instagram_urls))
+        
+        # Process each Instagram URL
+        results = []
+        loader = InstagramReelLoader()
+        
+        for url in instagram_urls:
+            try:
+                # Parse reel ID
+                reel_id = _parse_reel_id(url)
+                if not reel_id:
+                    continue
+                    
+                # Load Instagram Reel metadata
+                reel_data = loader.load(url)
+                
+                if reel_data and len(reel_data) > 0:
+                    metadata = reel_data[0]
+                    
+                    # If we have a video path, we'll need to transcribe it
+                    # For now, we'll just return the metadata with caption
+                    content = metadata.get('caption', '')
+                    
+                    results.append({
+                        "url": url,
+                        "reel_id": reel_id,
+                        "content": content,
+                        "author": metadata.get('author', ''),
+                        "date": metadata.get('date', ''),
+                        "needs_transcription": metadata.get('needs_transcription', False),
+                        "status": "success"
+                    })
+                else:
+                    results.append({
+                        "url": url,
+                        "reel_id": reel_id,
+                        "content": None,
+                        "status": "error",
+                        "error": "Could not load Instagram Reel"
+                    })
+                    
+            except Exception as e:
+                log.warning(f"Failed to load Instagram Reel for {url}: {e}")
+                results.append({
+                    "url": url,
+                    "reel_id": reel_id if 'reel_id' in locals() else None,
+                    "content": None,
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        return {
+            "status": True,
+            "instagram_urls": results
+        }
+        
+    except Exception as e:
+        log.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.DEFAULT(e),
+        )
+
+
 @router.post("/process/web")
 def process_web(
     request: Request, form_data: ProcessUrlForm, user=Depends(get_verified_user)

@@ -392,10 +392,13 @@ async def speech(request: Request, user=Depends(get_verified_user)):
     elif request.app.state.config.TTS_ENGINE == "elevenlabs":
         voice_id = payload.get("voice", "")
 
-        if voice_id not in get_available_voices(request):
+        # Get available voices and check if the voice_id is valid
+        # If get_available_voices returns empty dict, skip validation
+        available_voices = get_available_voices(request)
+        if available_voices and voice_id not in available_voices:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid voice id",
+                detail=f"Invalid voice id: {voice_id}. Available voices: {list(available_voices.keys())}",
             )
 
         try:
@@ -541,6 +544,12 @@ async def speech(request: Request, user=Depends(get_verified_user)):
             await f.write(json.dumps(payload))
 
         return FileResponse(file_path)
+    else:
+        # Unsupported or not configured TTS engine
+        raise HTTPException(
+            status_code=400,
+            detail=f"TTS engine '{request.app.state.config.TTS_ENGINE}' is not supported or not configured. Supported engines: openai, elevenlabs, azure, transformers"
+        )
 
 
 def transcription_handler(request, file_path, metadata):
@@ -1073,9 +1082,10 @@ def get_available_voices(request) -> dict:
             available_voices = get_elevenlabs_voices(
                 api_key=request.app.state.config.TTS_API_KEY
             )
-        except Exception:
-            # Avoided @lru_cache with exception
-            pass
+        except Exception as e:
+            # Log the error but continue with empty voice list
+            log.error(f"Error fetching ElevenLabs voices: {str(e)}")
+            available_voices = {}
     elif request.app.state.config.TTS_ENGINE == "azure":
         try:
             region = request.app.state.config.TTS_AZURE_SPEECH_REGION

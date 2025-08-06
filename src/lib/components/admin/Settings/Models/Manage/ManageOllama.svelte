@@ -91,7 +91,9 @@
 
 						for (const line of lines) {
 							if (line !== '') {
-								let data = JSON.parse(line);
+								// Handle both SSE format (data: {...}) and plain JSON ({...})
+								let jsonStr = line.startsWith('data: ') ? line.slice(6) : line;
+								let data = JSON.parse(jsonStr);
 
 								console.log(data);
 								if (data.error) {
@@ -175,7 +177,9 @@
 
 					for (const line of lines) {
 						if (line !== '') {
-							let data = JSON.parse(line);
+							// Handle both SSE format (data: {...}) and plain JSON ({...})
+							let jsonStr = line.startsWith('data: ') ? line.slice(6) : line;
+							let data = JSON.parse(jsonStr);
 							console.log(data);
 							if (data.error) {
 								throw data.error;

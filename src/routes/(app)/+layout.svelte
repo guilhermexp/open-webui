@@ -11,7 +11,6 @@
 	import { fade } from 'svelte/transition';
 
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
-	import { getFunctions } from '$lib/apis/functions';
 	import { getModels, getToolServersData, getVersionUpdates } from '$lib/apis';
 	import { getAllTags } from '$lib/apis/chats';
 	import { getPrompts } from '$lib/apis/prompts';
@@ -30,7 +29,6 @@
 		prompts,
 		knowledge,
 		tools,
-		functions,
 		tags,
 		banners,
 		showSettings,
