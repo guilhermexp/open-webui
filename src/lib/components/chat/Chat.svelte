@@ -144,7 +144,10 @@
 	let files = [];
 	let params = {};
 
-	$: if (chatIdProp) {
+	// Track previous chatIdProp to avoid unnecessary re-navigation
+	let previousChatIdProp = '';
+	$: if (chatIdProp && chatIdProp !== previousChatIdProp) {
+		previousChatIdProp = chatIdProp;
 		navigateHandler();
 	}
 
@@ -1149,7 +1152,12 @@
 			}
 
 			if (messages.length === 0) {
-				await initChatHandler(history);
+				// Set loading state while creating new chat
+				loading = true;
+				const newChatId = await initChatHandler(history);
+				if (newChatId) {
+					loading = false;
+				}
 			} else {
 				await saveChatHandler($chatId, history);
 			}
@@ -2002,11 +2010,21 @@
 		}
 	};
 
+	// Add a flag to prevent concurrent chat creation
+	let isCreatingChat = false;
+	
 	const initChatHandler = async (history) => {
+		// Prevent concurrent chat creation
+		if (isCreatingChat) {
+			console.log('Chat creation already in progress, skipping...');
+			return null;
+		}
+		
 		let _chatId = $chatId;
 
 		if (!$temporaryChatEnabled) {
 			try {
+				isCreatingChat = true;
 				chat = await createNewChat(
 					localStorage.token,
 					{
@@ -2029,23 +2047,35 @@
 				}
 
 				_chatId = chat.id;
-				await chatId.set(_chatId);
-
-				replaceState(`/c/${_chatId}`, '');
-
-				await tick();
-
-				await chats.set(await getChatList(localStorage.token, $currentChatPage));
+				
+				// Update chat list first to ensure the new chat is in the list
+				const updatedChats = await getChatList(localStorage.token, $currentChatPage);
+				await chats.set(updatedChats);
 				currentChatPage.set(1);
+				
+				// Wait for UI to update with new chat list
+				await tick();
+				
+				// Now update the chatId store and navigate
+				await chatId.set(_chatId);
+				
+				// Small delay to ensure store update is processed
+				await new Promise(resolve => setTimeout(resolve, 50));
+				
+				// Finally update the URL
+				replaceState(`/c/${_chatId}`, '');
 
 				selectedFolder.set(null);
 			} catch (error) {
 				console.error('Error creating new chat:', error);
 				return null;
+			} finally {
+				isCreatingChat = false;
 			}
 		} else {
 			_chatId = 'local';
 			await chatId.set('local');
+			isCreatingChat = false;
 		}
 		await tick();
 
