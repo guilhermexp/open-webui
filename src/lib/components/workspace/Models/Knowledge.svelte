@@ -95,18 +95,6 @@
 	const inputFilesHandler = async (inputFiles) => {
 		console.log('Input files handler called with:', inputFiles);
 
-		if (
-			($config?.file?.max_count ?? null) !== null &&
-			selectedItems.length + inputFiles.length > $config?.file?.max_count
-		) {
-			toast.error(
-				$i18n.t(`You can only chat with a maximum of {{maxCount}} file(s) at a time.`, {
-					maxCount: $config?.file?.max_count
-				})
-			);
-			return;
-		}
-
 		inputFiles.forEach(async (file) => {
 			console.log('Processing file:', {
 				name: file.name,
@@ -185,14 +173,15 @@
 			<div class=" flex flex-wrap items-center gap-2 mb-2.5">
 				{#each selectedItems as file, fileIdx}
 					<FileItem
+						{file}
 						item={file}
 						name={file.name}
-						size={file.size || 0}
 						modal={true}
 						edit={true}
+						loading={file.status === 'uploading'}
 						type={file?.legacy
 							? `Legacy${file.type ? ` ${file.type}` : ''}`
-							: (file?.type ?? 'Collection')}
+							: (file?.type ?? 'collection')}
 						dismissible
 						on:dismiss={(e) => {
 							selectedItems = selectedItems.filter((_, idx) => idx !== fileIdx);

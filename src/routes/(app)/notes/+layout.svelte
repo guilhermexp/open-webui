@@ -3,14 +3,20 @@
 	import { WEBUI_NAME, showSidebar, functions, config, user, showArchivedChats } from '$lib/stores';
 	import { goto } from '$app/navigation';
 
-	import MenuLines from '$lib/components/icons/MenuLines.svelte';
-
 	const i18n = getContext('i18n');
 
 	let loaded = false;
 
 	onMount(async () => {
-		// Notas sempre disponíveis - removendo restrição
+		if (
+			!(
+				($config?.features?.enable_notes ?? false) &&
+				($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))
+			)
+		) {
+			// If the feature is not enabled, redirect to the home page
+			goto('/');
+		}
 
 		loaded = true;
 	});

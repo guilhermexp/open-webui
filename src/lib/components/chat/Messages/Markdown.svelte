@@ -15,6 +15,7 @@
 	export let model = null;
 	export let save = false;
 	export let preview = false;
+	export let topPadding = false;
 
 	export let sourceIds = [];
 
@@ -53,6 +54,7 @@
 		{done}
 		{save}
 		{preview}
+		{topPadding}
 		{onTaskClick}
 		{onSourceClick}
 		{onSave}
