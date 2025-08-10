@@ -13,7 +13,6 @@
 		showSidebar,
 		showSearch,
 		mobile,
-		showArchivedChats,
 		pinnedChats,
 		scrollPaginationEnabled,
 		currentChatPage,
@@ -42,7 +41,6 @@
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import ArchivedChatsModal from './ArchivedChatsModal.svelte';
-	import UserMenu from './Sidebar/UserMenu.svelte';
 	import ChatItem from './Sidebar/ChatItem.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import Loader from '../common/Loader.svelte';
@@ -58,6 +56,7 @@
 	import FolderModal from './Sidebar/Folders/FolderModal.svelte';
 	import NoteFolders from './Sidebar/NoteFolders.svelte';
 	import NoteFolderModal from './Sidebar/NoteFolders/NoteFolderModal.svelte';
+	import UserMenu from './Sidebar/UserMenu.svelte';
 
 	const BREAKPOINT = 768;
 
@@ -67,6 +66,7 @@
 	let selectedChatId = null;
 	let showDropdown = false;
 	let showPinnedChat = true;
+	let showArchivedChatsModal = false;
 
 
 	// Pagination variables
@@ -83,8 +83,14 @@
 	let selectedNoteFolder = null;
 
 	const initFolders = async () => {
+		if (!localStorage.token) {
+			console.warn('No token found in localStorage');
+			return;
+		}
+		
 		const folderList = await getFolders(localStorage.token).catch((error) => {
-			toast.error(`${error}`);
+			console.error('Error loading folders:', error);
+			toast.error(`Erro ao carregar pastas: ${error}`);
 			return [];
 		});
 
@@ -168,10 +174,15 @@
 	};
 
 	const initNoteFolders = async () => {
+		if (!localStorage.token) {
+			console.warn('No token found in localStorage for note folders');
+			return;
+		}
+		
 		console.log('initNoteFolders called');
 		const folderList = await getNoteFolders(localStorage.token).catch((error) => {
 			console.error('Error getting note folders:', error);
-			toast.error(`${error}`);
+			toast.error(`Erro ao carregar pastas de notas: ${error}`);
 			return [];
 		});
 		console.log('Folder list from API:', folderList);
@@ -265,35 +276,70 @@
 
 
 	const initChatList = async () => {
-		// Reset pagination variables
-		tags.set(await getAllTags(localStorage.token));
-		pinnedChats.set(await getPinnedChatList(localStorage.token));
-		initFolders();
-		initNoteFolders();
+		if (!localStorage.token) {
+			console.warn('No token found in localStorage for chat list');
+			return;
+		}
+		
+		try {
+			// Reset pagination variables
+			const [tagsData, pinnedData] = await Promise.all([
+				getAllTags(localStorage.token),
+				getPinnedChatList(localStorage.token)
+			]);
+			
+			tags.set(tagsData);
+			pinnedChats.set(pinnedData);
+			
+			await Promise.all([
+				initFolders(),
+				initNoteFolders()
+			]);
 
-		currentChatPage.set(1);
-		allChatsLoaded = false;
+			currentChatPage.set(1);
+			allChatsLoaded = false;
 
-		await chats.set(await getChatList(localStorage.token, $currentChatPage));
+			const chatData = await getChatList(localStorage.token, $currentChatPage);
+			await chats.set(chatData);
+			
+		} catch (error) {
+			console.error('Error loading chat list:', error);
+			toast.error(`Erro ao carregar lista de chats: ${error}`);
+			allChatsLoaded = true;
+		}
 
 		// Enable pagination
 		scrollPaginationEnabled.set(true);
 	};
 
 	const loadMoreChats = async () => {
+		if (!localStorage.token) {
+			console.warn('No token found for loading more chats');
+			return;
+		}
+		
 		chatListLoading = true;
 
-		currentChatPage.set($currentChatPage + 1);
+		try {
+			currentChatPage.set($currentChatPage + 1);
 
-		let newChatList = [];
+			const newChatList = await getChatList(localStorage.token, $currentChatPage);
 
-		newChatList = await getChatList(localStorage.token, $currentChatPage);
-
-		// once the bottom of the list has been reached (no results) there is no need to continue querying
-		allChatsLoaded = newChatList.length === 0;
-		await chats.set([...($chats ? $chats : []), ...newChatList]);
-
-		chatListLoading = false;
+			// once the bottom of the list has been reached (no results) there is no need to continue querying
+			allChatsLoaded = newChatList.length === 0;
+			
+			if ($chats) {
+				await chats.set([...$chats, ...newChatList]);
+			} else {
+				await chats.set(newChatList);
+			}
+			
+		} catch (error) {
+			console.error('Error loading more chats:', error);
+			toast.error(`Erro ao carregar mais chats: ${error}`);
+		} finally {
+			chatListLoading = false;
+		}
 	};
 
 	const importChatHandler = async (items, pinned = false, folderId = null) => {
@@ -468,8 +514,17 @@
 			initFolders();
 		});
 
-		await initChatList();
-		await initNoteFolders();
+		try {
+			await initChatList();
+		} catch (error) {
+			console.error('Failed to initialize chat list:', error);
+		}
+		
+		try {
+			await initNoteFolders();
+		} catch (error) {
+			console.error('Failed to initialize note folders:', error);
+		}
 
 		window.addEventListener('keydown', onKeyDown);
 		window.addEventListener('keyup', onKeyUp);
@@ -506,7 +561,7 @@
 </script>
 
 <ArchivedChatsModal
-	bind:show={$showArchivedChats}
+	bind:show={showArchivedChatsModal}
 	onUpdate={async () => {
 		await initChatList();
 	}}
@@ -540,7 +595,7 @@
 		on:mousedown={() => {
 			showSidebar.set(!$showSidebar);
 		}}
-	/>
+	></div>
 {/if}
 
 <SearchModal
@@ -627,7 +682,7 @@
 			</a>
 		</div>
 
-		<!-- {#if $user?.role === 'admin'}
+		{#if $user?.role === 'admin'}
 			<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
 				<a
 					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
@@ -651,7 +706,7 @@
 					</div>
 				</a>
 			</div>
-		{/if} -->
+		{/if}
 
 		<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
 			<button
@@ -671,99 +726,99 @@
 			</button>
 		</div>
 
-		{#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
-			<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
-				<a
-					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-					href="/notes"
-					on:click={() => {
-						selectedChatId = null;
-						chatId.set('');
-						selectedNoteFolder = null;
-						if ($mobile) {
-							showSidebar.set(false);
-						}
-					}}
-					draggable="false"
-				>
-					<div class="self-center">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="2"
-							stroke="currentColor"
-							class="size-[1.1rem]"
-						>
-							<path
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
-							/>
-						</svg>
-					</div>
 
-					<div class="flex self-center translate-y-[0.5px]">
-						<div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
-					</div>
-				</a>
-				
-				<!-- Botão + para criar pastas -->
-				<button
-					class="self-center p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-					on:click={async () => {
-						await tick();
-						setTimeout(() => {
-							showCreateNoteFolderModal = true;
-						}, 0);
-					}}
-					type="button"
-				>
+		<!-- NOTAS - SEMPRE VISÍVEL -->
+		<div class="px-1.5 flex justify-center text-gray-800 dark:text-gray-200">
+			<a
+				class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-gray-100 dark:hover:bg-gray-900 transition"
+				href="/notes"
+				on:click={() => {
+					selectedChatId = null;
+					chatId.set('');
+					selectedNoteFolder = null;
+					if ($mobile) {
+						showSidebar.set(false);
+					}
+				}}
+				draggable="false"
+			>
+				<div class="self-center">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
 						viewBox="0 0 24 24"
-						stroke-width="2.5"
+						stroke-width="2"
 						stroke="currentColor"
-						class="size-3.5"
+						class="size-[1.1rem]"
 					>
 						<path
+							stroke="currentColor"
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							d="M12 4.5v15m7.5-7.5h-15"
+							stroke-width="2"
+							d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
 						/>
 					</svg>
-				</button>
-			</div>
-			
-			{#if Object.keys(noteFolders).length > 0}
-				<!-- Mostrar pastas como sub-itens quando houver pastas -->
-				<div class="ml-3">
-					<NoteFolders
-						folders={noteFolders}
-						{shiftKey}
-						onDelete={(folderId) => {
-							selectedNoteFolder = null;
-							initNoteFolders();
-						}}
-						on:update={() => {
-							initNoteFolders();
-						}}
-						on:change={async () => {
-							initNoteFolders();
-						}}
-						on:click={(e) => {
-							selectedNoteFolder = e.detail;
-							goto(`/notes?folder=${e.detail.id}`);
-							if ($mobile) {
-								showSidebar.set(false);
-							}
-						}}
-					/>
 				</div>
-			{/if}
+
+				<div class="flex self-center translate-y-[0.5px]">
+					<div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
+				</div>
+			</a>
+			
+			<!-- Botão + para criar pastas -->
+			<button
+				class="self-center p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+				on:click={async () => {
+					await tick();
+					setTimeout(() => {
+						showCreateNoteFolderModal = true;
+					}, 0);
+				}}
+				type="button"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="2.5"
+					stroke="currentColor"
+					class="size-3.5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 4.5v15m7.5-7.5h-15"
+					/>
+				</svg>
+			</button>
+		</div>
+		
+		{#if Object.keys(noteFolders).length > 0}
+			<!-- Mostrar pastas como sub-itens quando houver pastas -->
+			<div class="ml-3 px-1.5">
+				<NoteFolders
+					folders={noteFolders}
+					{shiftKey}
+					onDelete={(folderId) => {
+						selectedNoteFolder = null;
+						initNoteFolders();
+					}}
+					on:update={() => {
+						initNoteFolders();
+					}}
+					on:change={async () => {
+						initNoteFolders();
+					}}
+					on:click={(e) => {
+						selectedNoteFolder = e.detail;
+						goto(`/notes?folder=${e.detail.id}`);
+						if ($mobile) {
+							showSidebar.set(false);
+						}
+					}}
+				/>
+			</div>
 		{/if}
 
 	
@@ -1066,34 +1121,39 @@
 		</div>
 
 		<div class="px-2">
-			<div class="flex flex-col font-primary">
-				{#if $user !== undefined && $user !== null}
-					<UserMenu
-						role={$user?.role}
-						on:show={(e) => {
-							if (e.detail === 'archived-chat') {
-								showArchivedChats.set(true);
-							}
-						}}
+			{#if $user !== undefined && $user !== null}
+				<UserMenu
+					show={showDropdown}
+					on:change={(e) => {
+						showDropdown = e.detail;
+					}}
+					on:show={(e) => {
+						if (e.detail === 'archived-chat') {
+							showArchivedChatsModal = true;
+						}
+					}}
+					help={true}
+				>
+					<button
+						class="flex w-full rounded-xl py-2.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+						id="user-menu-button"
+						aria-label="User Menu"
 					>
-						<button
-							class=" flex items-center rounded-xl py-2.5 px-2.5 w-full hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-							on:click={() => {
-								showDropdown = !showDropdown;
-							}}
-						>
-							<div class=" self-center mr-3">
-								<img
-									src={$user?.profile_image_url}
-									class=" max-w-[30px] object-cover rounded-full"
-									alt="User profile"
-								/>
-							</div>
-							<div class=" self-center font-medium">{$user?.name}</div>
-						</button>
-					</UserMenu>
-				{/if}
-			</div>
+						<div class="self-center">
+							<img
+								src={$user.profile_image_url ?? '/user.png'}
+								class="size-8 object-cover rounded-full"
+								alt="user avatar"
+								crossorigin="anonymous"
+							/>
+						</div>
+						<div class="ml-3 self-center">
+							<div class="text-sm font-medium dark:text-gray-100">{$user.name}</div>
+							<div class="text-xs text-gray-500 dark:text-gray-400">{$user.email}</div>
+						</div>
+					</button>
+				</UserMenu>
+			{/if}
 		</div>
 	</div>
 </div>

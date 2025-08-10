@@ -20,7 +20,6 @@
 
 	import ChartBar from '../icons/ChartBar.svelte';
 	import DocumentChartBar from '../icons/DocumentChartBar.svelte';
-	import Evaluations from './Settings/Evaluations.svelte';
 	import CodeExecution from './Settings/CodeExecution.svelte';
 	import Tools from './Settings/Tools.svelte';
 	import MCP from './Settings/MCP.svelte';
@@ -37,7 +36,6 @@
 			'general',
 			'connections',
 			'models',
-			'evaluations',
 			'tools',
 			'mcp',
 			'documents',
@@ -164,22 +162,6 @@
 				</svg>
 			</div>
 			<div class=" self-center">{$i18n.t('Models')}</div>
-		</button>
-
-		<button
-			id="evaluations"
-			class="px-0.5 py-1 min-w-fit rounded-lg flex-1 md:flex-none flex text-left transition {selectedTab ===
-			'evaluations'
-				? ''
-				: ' text-gray-300 dark:text-gray-600 hover:text-gray-700 dark:hover:text-white'}"
-			on:click={() => {
-				goto('/admin/settings/evaluations');
-			}}
-		>
-			<div class=" self-center mr-2">
-				<DocumentChartBar />
-			</div>
-			<div class=" self-center">{$i18n.t('Evaluations')}</div>
 		</button>
 
 		<button
@@ -483,8 +465,6 @@
 			/>
 		{:else if selectedTab === 'models'}
 			<Models />
-		{:else if selectedTab === 'evaluations'}
-			<Evaluations />
 		{:else if selectedTab === 'tools'}
 			<Tools
 				saveSettings={async (updated) => {

@@ -20,7 +20,6 @@
 	import Tooltip from '../common/Tooltip.svelte';
 	import Menu from './Navbar/Menu.svelte';
 	import { page } from '$app/stores';
-	import UserMenu from './Sidebar/UserMenu.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
 	import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
 	import Map from '../icons/Map.svelte';
@@ -163,32 +162,7 @@
 					</button>
 				</Tooltip>
 
-				{#if $user !== undefined}
-					<UserMenu
-						className="max-w-[240px]"
-						role={$user?.role}
-						help={true}
-						on:show={(e) => {
-							if (e.detail === 'archived-chat') {
-								showArchivedChats.set(true);
-							}
-						}}
-					>
-						<button
-							class="select-none flex rounded-xl p-1.5 w-full hover:bg-gray-50 dark:hover:bg-gray-850 transition"
-							aria-label="User Menu"
-						>
-							<div class=" self-center">
-								<img
-									src={$user?.profile_image_url}
-									class="size-6 object-cover rounded-full"
-									alt="User profile"
-									draggable="false"
-								/>
-							</div>
-						</button>
-					</UserMenu>
-				{/if}
+				<!-- UserMenu removed -->
 			</div>
 		</div>
 	</div>

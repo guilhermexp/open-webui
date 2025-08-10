@@ -71,6 +71,7 @@ from open_webui.routers import (
     folders,
     configs,
     files,
+    functions,
     memories,
     models,
     knowledge,
@@ -471,8 +472,9 @@ class SPAStaticFiles(StaticFiles):
             return await super().get_response(path, scope)
         except (HTTPException, StarletteHTTPException) as ex:
             if ex.status_code == 404:
-                if path.endswith(".js"):
-                    # Return 404 for javascript files
+                # Don't return index.html for API routes or specific file extensions
+                if path.startswith("api/") or path.startswith("/api/") or path.endswith(".js"):
+                    # Return 404 for API routes and javascript files
                     raise ex
                 else:
                     return await super().get_response("index.html", scope)
@@ -1235,6 +1237,7 @@ app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
 app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["knowledge"])
 app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
+app.include_router(functions.router, prefix="/api/v1/functions", tags=["functions"])
 app.include_router(mcp.router, prefix="/api/v1/mcp", tags=["mcp"])
 
 app.include_router(memories.router, prefix="/api/v1/memories", tags=["memories"])

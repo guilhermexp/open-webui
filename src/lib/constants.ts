@@ -3,7 +3,9 @@ import { browser, dev } from '$app/environment';
 
 export const APP_NAME = 'Open WebUI';
 
-export const WEBUI_HOSTNAME = browser ? (dev ? `localhost:8083` : ``) : '';
+// In dev, point the base URL at the Vite dev server host so that
+// fetches go through Vite's proxy to the backend (see vite.config.ts)
+export const WEBUI_HOSTNAME = browser ? (dev ? `localhost:5173` : ``) : '';
 export const WEBUI_BASE_URL = browser ? (dev ? `http://${WEBUI_HOSTNAME}` : ``) : ``;
 export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
 

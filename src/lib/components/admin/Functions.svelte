@@ -318,7 +318,21 @@
 </div>
 
 <div class="mb-5">
-	{#each filteredItems as func (func.id)}
+	{#if filteredItems.length === 0}
+		<div class="text-center py-12 text-gray-500 dark:text-gray-400">
+			<div class="text-lg font-medium mb-2">
+				{$i18n.t('No Functions Found')}
+			</div>
+			<div class="text-sm">
+				{#if query}
+					{$i18n.t('No functions matching your search.')}
+				{:else}
+					{$i18n.t('Click the + button to create your first function.')}
+				{/if}
+			</div>
+		</div>
+	{:else}
+		{#each filteredItems as func (func.id)}
 		<div
 			class=" flex space-x-4 cursor-pointer w-full px-2 py-2 dark:hover:bg-white/5 hover:bg-black/5 rounded-xl"
 		>
@@ -474,6 +488,7 @@
 			</div>
 		</div>
 	{/each}
+	{/if}
 </div>
 
 <!-- <div class=" text-gray-500 text-xs mt-1 mb-2">

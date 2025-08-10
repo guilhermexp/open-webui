@@ -20,9 +20,24 @@ export default defineConfig({
 		port: 5173,
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8083',
+				target: 'http://localhost:8084',
 				changeOrigin: true,
-				secure: false
+        secure: false
+      },
+      // Proxy backend websockets for Socket.IO
+      '/ws': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        ws: true
+      },
+      // Proxy backend static files (favicons, assets) during dev
+      '/static': {
+        target: 'http://localhost:8084',
+        changeOrigin: true
+      },
+      '/favicon.png': {
+        target: 'http://localhost:8084',
+        changeOrigin: true
 			}
 		}
 	}

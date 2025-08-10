@@ -45,6 +45,11 @@ export const getFolders = async (token: string = '') => {
 		}
 	})
 		.then(async (res) => {
+			// Check if response is JSON
+			const contentType = res.headers.get('content-type');
+			if (!contentType || !contentType.includes('application/json')) {
+				throw new Error('Server returned non-JSON response');
+			}
 			if (!res.ok) throw await res.json();
 			return res.json();
 		})
@@ -52,8 +57,8 @@ export const getFolders = async (token: string = '') => {
 			return json;
 		})
 		.catch((err) => {
-			error = err.detail;
-			console.error(err);
+			error = err.detail || err.message || err;
+			console.error('Error fetching folders:', err);
 			return null;
 		});
 
