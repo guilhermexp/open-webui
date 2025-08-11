@@ -149,6 +149,7 @@
 		loading = true;
 		const res = await getNoteById(localStorage.token, id).catch((error) => {
 			toast.error(`${error}`);
+			loading = false;
 			return null;
 		});
 
@@ -158,7 +159,8 @@
 			note = res;
 			files = res.data.files || [];
 		} else {
-			goto('/');
+			loading = false;
+			goto('/notes');
 			return;
 		}
 

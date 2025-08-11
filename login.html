@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Open WebUI</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .info strong {
+            color: #333;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        .success {
+            background: #48bb78;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+        .error {
+            background: #f56565;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Login no Open WebUI</h1>
+        
+        <div class="info">
+            <p><strong>Usuário:</strong> KortixAI</p>
+            <p><strong>Email:</strong> guilherme-varela@hotmail.com</p>
+            <p><strong>Role:</strong> Admin</p>
+        </div>
+        
+        <button onclick="login()">Fazer Login Automático</button>
+        
+        <div id="success" class="success">
+            ✅ Login realizado com sucesso! Redirecionando...
+        </div>
+        
+        <div id="error" class="error">
+            ❌ Erro ao fazer login. Tente novamente.
+        </div>
+    </div>
+
+    <script>
+        function login() {
+            try {
+                // Token válido por 30 dias
+                const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRiM2UxMjFjLWUzYTUtNGQzNi1iZjY3LTU4MmFjNDJiYjI4OCIsImV4cCI6MTc1NzUyMjk3N30.fZ0ZLInCSopmrfLQlGJRlSTZo2I2aDl5WMdEbUl0hSc';
+                
+                // Salvar token no localStorage
+                localStorage.setItem('token', token);
+                
+                // Mostrar mensagem de sucesso
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                
+                // Redirecionar para o Open WebUI após 2 segundos
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:5173';
+                }, 2000);
+                
+            } catch (e) {
+                // Mostrar mensagem de erro
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('success').style.display = 'none';
+                console.error('Erro ao fazer login:', e);
+            }
+        }
+    </script>
+</body>
+</html>
