@@ -43,7 +43,7 @@
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
-	// Removed UpdateInfoToast usage
+	import UpdateInfoToast from '$lib/components/layout/UpdateInfoToast.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
 	const i18n = getContext('i18n');
@@ -225,41 +225,50 @@
 				}
 			}
 
-			// Check for version updates - DISABLED
-			// if ($user?.role === 'admin' && $config?.features?.enable_version_update_check) {
-			// 	// Check if the user has dismissed the update toast in the last 24 hours
-			// 	if (localStorage.dismissedUpdateToast) {
-			// 		const dismissedUpdateToast = new Date(Number(localStorage.dismissedUpdateToast));
-			// 		const now = new Date();
+			// Check for version updates
+			if ($user?.role === 'admin' && $config?.features?.enable_version_update_check) {
+				// Check if the user has dismissed the update toast in the last 24 hours
+				if (localStorage.dismissedUpdateToast) {
+					const dismissedUpdateToast = new Date(Number(localStorage.dismissedUpdateToast));
+					const now = new Date();
 
-			// 		if (now - dismissedUpdateToast > 24 * 60 * 60 * 1000) {
-			// 			checkForVersionUpdates();
-			// 		}
-			// 	} else {
-			// 		checkForVersionUpdates();
-			// 	}
-			// }
+					if (now - dismissedUpdateToast > 24 * 60 * 60 * 1000) {
+						checkForVersionUpdates();
+					}
+				} else {
+					checkForVersionUpdates();
+				}
+			}
 			await tick();
 		}
 
 		loaded = true;
 	});
 
-	// Version update check - DISABLED
-	// const checkForVersionUpdates = async () => {
-	// 	version = await getVersionUpdates(localStorage.token).catch((error) => {
-	// 		return {
-	// 			current: WEBUI_VERSION,
-	// 			latest: WEBUI_VERSION
-	// 		};
-	// 	});
-	// };
+	const checkForVersionUpdates = async () => {
+		version = await getVersionUpdates(localStorage.token).catch((error) => {
+			return {
+				current: WEBUI_VERSION,
+				latest: WEBUI_VERSION
+			};
+		});
+	};
 </script>
 
 <SettingsModal bind:show={$showSettings} />
 <ChangelogModal bind:show={$showChangelog} />
 
-<!-- UpdateInfoToast removed -->
+{#if version && compareVersion(version.latest, version.current) && ($settings?.showUpdateToast ?? true)}
+	<div class=" absolute bottom-8 right-8 z-50" in:fade={{ duration: 100 }}>
+		<UpdateInfoToast
+			{version}
+			on:close={() => {
+				localStorage.setItem('dismissedUpdateToast', Date.now().toString());
+				version = null;
+			}}
+		/>
+	</div>
+{/if}
 
 {#if $user}
 	<div class="app relative">

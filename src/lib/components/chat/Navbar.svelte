@@ -23,6 +23,7 @@
 	import ModelSelector from '../chat/ModelSelector.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import Menu from '$lib/components/layout/Navbar/Menu.svelte';
+	import UserMenu from '$lib/components/layout/Sidebar/UserMenu.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
 	import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
 
@@ -180,6 +181,33 @@
 								</div>
 							</button>
 						</Tooltip>
+					{/if}
+
+					{#if $user !== undefined && $user !== null}
+						<UserMenu
+							className="max-w-[240px]"
+							role={$user?.role}
+							help={true}
+							on:show={(e) => {
+								if (e.detail === 'archived-chat') {
+									showArchivedChats.set(true);
+								}
+							}}
+						>
+							<div
+								class="select-none flex rounded-xl p-1.5 w-full hover:bg-gray-50 dark:hover:bg-gray-850 transition"
+							>
+								<div class=" self-center">
+									<span class="sr-only">{$i18n.t('User menu')}</span>
+									<img
+										src={$user?.profile_image_url}
+										class="size-6 object-cover rounded-full"
+										alt=""
+										draggable="false"
+									/>
+								</div>
+							</div>
+						</UserMenu>
 					{/if}
 				</div>
 			</div>
