@@ -1,6 +1,6 @@
 {
 	"name": "open-webui",
-	"version": "0.6.20",
+	"version": "0.6.18",
 	"private": true,
 	"scripts": {
 		"dev": "npm run pyodide:fetch && npm run dev:backend & npm run dev:frontend",
@@ -62,7 +62,6 @@
 		"@codemirror/theme-one-dark": "^6.1.2",
 		"@floating-ui/dom": "^1.7.2",
 		"@huggingface/transformers": "^3.0.0",
-		"@joplin/turndown-plugin-gfm": "^1.0.62",
 		"@mediapipe/tasks-vision": "^0.10.17",
 		"@pyscript/core": "^0.4.32",
 		"@sveltejs/adapter-node": "^2.0.0",
@@ -77,7 +76,6 @@
 		"@tiptap/extension-image": "^3.0.7",
 		"@tiptap/extension-link": "^3.0.7",
 		"@tiptap/extension-list": "^3.0.7",
-		"@tiptap/extension-mention": "^3.0.9",
 		"@tiptap/extension-table": "^3.0.7",
 		"@tiptap/extension-typography": "^3.0.7",
 		"@tiptap/extension-youtube": "^3.0.7",

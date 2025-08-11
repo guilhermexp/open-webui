@@ -39,7 +39,7 @@
 
 	export let className = 'my-2';
 	export let editorClassName = '';
-	export let stickyButtonsClassName = 'top-0';
+	export let stickyButtonsClassName = 'top-8';
 
 	let pyodideWorker = null;
 

@@ -23,7 +23,6 @@
 
 	export let user;
 
-	export let chatId;
 	export let history;
 	export let messageId;
 
@@ -38,7 +37,6 @@
 
 	export let isFirstMessage: boolean;
 	export let readOnly: boolean;
-	export let topPadding = false;
 
 	let showDeleteConfirm = false;
 
@@ -319,7 +317,7 @@
 									: ' w-full'}"
 							>
 								{#if message.content}
-									<Markdown id={`${chatId}-${message.id}`} content={message.content} {topPadding} />
+									<Markdown id={message.id} content={message.content} />
 								{/if}
 							</div>
 						</div>

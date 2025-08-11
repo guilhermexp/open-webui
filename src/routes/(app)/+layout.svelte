@@ -36,8 +36,7 @@
 		showChangelog,
 		temporaryChatEnabled,
 		toolServers,
-		showSearch,
-		showSidebar
+		showSearch
 	} from '$lib/stores';
 
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
@@ -329,11 +328,7 @@
 				{#if loaded}
 					<slot />
 				{:else}
-					<div
-						class="w-full flex-1 h-full flex items-center justify-center {$showSidebar
-							? '  md:max-w-[calc(100%-260px)]'
-							: ' '}"
-					>
+					<div class="w-full flex-1 h-full flex items-center justify-center">
 						<Spinner className="size-5" />
 					</div>
 				{/if}

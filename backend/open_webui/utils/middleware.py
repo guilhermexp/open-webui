@@ -83,7 +83,6 @@ from open_webui.utils.filter import (
     process_filter_functions,
 )
 from open_webui.utils.code_interpreter import execute_code_jupyter
-from open_webui.utils.payload import apply_model_system_prompt_to_body
 
 from open_webui.tasks import create_task
 
@@ -95,7 +94,6 @@ from open_webui.config import (
 from open_webui.env import (
     SRC_LOG_LEVELS,
     GLOBAL_LOG_LEVEL,
-    CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE,
     BYPASS_MODEL_ACCESS_CONTROL,
     ENABLE_REALTIME_CHAT_SAVE,
 )
@@ -685,7 +683,6 @@ def apply_params_to_form_data(form_data, model):
 
     open_webui_params = {
         "stream_response": bool,
-        "stream_delta_chunk_size": int,
         "function_calling": str,
         "system": str,
     }
@@ -777,8 +774,8 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
             if folder and folder.data:
                 if "system_prompt" in folder.data:
-                    form_data = apply_model_system_prompt_to_body(
-                        folder.data["system_prompt"], form_data, metadata, user
+                    form_data["messages"] = add_or_update_system_message(
+                        folder.data["system_prompt"], form_data["messages"]
                     )
                 if "files" in folder.data:
                     form_data["files"] = [
@@ -932,7 +929,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 }
 
     if tools_dict:
-        if metadata.get("params", {}).get("function_calling") == "native":
+        if metadata.get("function_calling") == "native":
             # If the function calling is native, then call the tools function calling handler
             metadata["tools"] = tools_dict
             form_data["tools"] = [
@@ -1384,6 +1381,14 @@ async def process_chat_response(
         task_id = str(uuid4())  # Create a unique task ID.
         model_id = form_data.get("model", "")
 
+        Chats.upsert_message_to_chat_by_id_and_message_id(
+            metadata["chat_id"],
+            metadata["message_id"],
+            {
+                "model": model_id,
+            },
+        )
+
         def split_content_and_whitespace(content):
             content_stripped = content.rstrip()
             original_whitespace = (
@@ -1405,17 +1410,12 @@ async def process_chat_response(
 
                 for block in content_blocks:
                     if block["type"] == "text":
-                        block_content = block["content"].strip()
-                        if block_content:
-                            content = f"{content}{block_content}\n"
+                        content = f"{content}{block['content'].strip()}\n"
                     elif block["type"] == "tool_calls":
                         attributes = block.get("attributes", {})
 
                         tool_calls = block.get("content", [])
                         results = block.get("results", [])
-
-                        if content and not content.endswith("\n"):
-                            content += "\n"
 
                         if results:
 
@@ -1439,12 +1439,12 @@ async def process_chat_response(
                                         break
 
                                 if tool_result:
-                                    tool_calls_display_content = f'{tool_calls_display_content}<details type="tool_calls" done="true" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}" result="{html.escape(json.dumps(tool_result, ensure_ascii=False))}" files="{html.escape(json.dumps(tool_result_files)) if tool_result_files else ""}">\n<summary>Tool Executed</summary>\n</details>\n'
+                                    tool_calls_display_content = f'{tool_calls_display_content}\n<details type="tool_calls" done="true" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}" result="{html.escape(json.dumps(tool_result, ensure_ascii=False))}" files="{html.escape(json.dumps(tool_result_files)) if tool_result_files else ""}">\n<summary>Tool Executed</summary>\n</details>\n'
                                 else:
-                                    tool_calls_display_content = f'{tool_calls_display_content}<details type="tool_calls" done="false" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}">\n<summary>Executing...</summary>\n</details>\n'
+                                    tool_calls_display_content = f'{tool_calls_display_content}\n<details type="tool_calls" done="false" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}">\n<summary>Executing...</summary>\n</details>'
 
                             if not raw:
-                                content = f"{content}{tool_calls_display_content}"
+                                content = f"{content}\n{tool_calls_display_content}\n\n"
                         else:
                             tool_calls_display_content = ""
 
@@ -1457,10 +1457,10 @@ async def process_chat_response(
                                     "arguments", ""
                                 )
 
-                                tool_calls_display_content = f'{tool_calls_display_content}\n<details type="tool_calls" done="false" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}">\n<summary>Executing...</summary>\n</details>\n'
+                                tool_calls_display_content = f'{tool_calls_display_content}\n<details type="tool_calls" done="false" id="{tool_call_id}" name="{tool_name}" arguments="{html.escape(json.dumps(tool_arguments))}">\n<summary>Executing...</summary>\n</details>'
 
                             if not raw:
-                                content = f"{content}{tool_calls_display_content}"
+                                content = f"{content}\n{tool_calls_display_content}\n\n"
 
                     elif block["type"] == "reasoning":
                         reasoning_display_content = "\n".join(
@@ -1470,26 +1470,16 @@ async def process_chat_response(
 
                         reasoning_duration = block.get("duration", None)
 
-                        start_tag = block.get("start_tag", "")
-                        end_tag = block.get("end_tag", "")
-
-                        if content and not content.endswith("\n"):
-                            content += "\n"
-
                         if reasoning_duration is not None:
                             if raw:
-                                content = (
-                                    f'{content}{start_tag}{block["content"]}{end_tag}\n'
-                                )
+                                content = f'{content}\n{block["start_tag"]}{block["content"]}{block["end_tag"]}\n'
                             else:
-                                content = f'{content}<details type="reasoning" done="true" duration="{reasoning_duration}">\n<summary>Thought for {reasoning_duration} seconds</summary>\n{reasoning_display_content}\n</details>\n'
+                                content = f'{content}\n<details type="reasoning" done="true" duration="{reasoning_duration}">\n<summary>Thought for {reasoning_duration} seconds</summary>\n{reasoning_display_content}\n</details>\n'
                         else:
                             if raw:
-                                content = (
-                                    f'{content}{start_tag}{block["content"]}{end_tag}\n'
-                                )
+                                content = f'{content}\n{block["start_tag"]}{block["content"]}{block["end_tag"]}\n'
                             else:
-                                content = f'{content}<details type="reasoning" done="false">\n<summary>Thinking…</summary>\n{reasoning_display_content}\n</details>\n'
+                                content = f'{content}\n<details type="reasoning" done="false">\n<summary>Thinking…</summary>\n{reasoning_display_content}\n</details>\n'
 
                     elif block["type"] == "code_interpreter":
                         attributes = block.get("attributes", {})
@@ -1509,30 +1499,26 @@ async def process_chat_response(
                             # Keep content as is - either closing backticks or no backticks
                             content = content_stripped + original_whitespace
 
-                        if content and not content.endswith("\n"):
-                            content += "\n"
-
                         if output:
                             output = html.escape(json.dumps(output))
 
                             if raw:
-                                content = f'{content}<code_interpreter type="code" lang="{lang}">\n{block["content"]}\n</code_interpreter>\n```output\n{output}\n```\n'
+                                content = f'{content}\n<code_interpreter type="code" lang="{lang}">\n{block["content"]}\n</code_interpreter>\n```output\n{output}\n```\n'
                             else:
-                                content = f'{content}<details type="code_interpreter" done="true" output="{output}">\n<summary>Analyzed</summary>\n```{lang}\n{block["content"]}\n```\n</details>\n'
+                                content = f'{content}\n<details type="code_interpreter" done="true" output="{output}">\n<summary>Analyzed</summary>\n```{lang}\n{block["content"]}\n```\n</details>\n'
                         else:
                             if raw:
-                                content = f'{content}<code_interpreter type="code" lang="{lang}">\n{block["content"]}\n</code_interpreter>\n'
+                                content = f'{content}\n<code_interpreter type="code" lang="{lang}">\n{block["content"]}\n</code_interpreter>\n'
                             else:
-                                content = f'{content}<details type="code_interpreter" done="false">\n<summary>Analyzing...</summary>\n```{lang}\n{block["content"]}\n```\n</details>\n'
+                                content = f'{content}\n<details type="code_interpreter" done="false">\n<summary>Analyzing...</summary>\n```{lang}\n{block["content"]}\n```\n</details>\n'
 
                     else:
                         block_content = str(block["content"]).strip()
-                        if block_content:
-                            content = f"{content}{block['type']}: {block_content}\n"
+                        content = f"{content}{block['type']}: {block_content}\n"
 
                 return content.strip()
 
-            def convert_content_blocks_to_messages(content_blocks, raw=False):
+            def convert_content_blocks_to_messages(content_blocks):
                 messages = []
 
                 temp_blocks = []
@@ -1541,7 +1527,7 @@ async def process_chat_response(
                         messages.append(
                             {
                                 "role": "assistant",
-                                "content": serialize_content_blocks(temp_blocks, raw),
+                                "content": serialize_content_blocks(temp_blocks),
                                 "tool_calls": block.get("content"),
                             }
                         )
@@ -1561,7 +1547,7 @@ async def process_chat_response(
                         temp_blocks.append(block)
 
                 if temp_blocks:
-                    content = serialize_content_blocks(temp_blocks, raw)
+                    content = serialize_content_blocks(temp_blocks)
                     if content:
                         messages.append(
                             {
@@ -1818,15 +1804,6 @@ async def process_chat_response(
 
                     response_tool_calls = []
 
-                    delta_count = 0
-                    delta_chunk_size = max(
-                        CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE,
-                        int(
-                            metadata.get("params", {}).get("stream_delta_chunk_size")
-                            or 1
-                        ),
-                    )
-
                     async for line in response.body_iterator:
                         line = line.decode("utf-8") if isinstance(line, bytes) else line
                         data = line
@@ -1966,8 +1943,8 @@ async def process_chat_response(
                                         ):
                                             reasoning_block = {
                                                 "type": "reasoning",
-                                                "start_tag": "<think>",
-                                                "end_tag": "</think>",
+                                                "start_tag": "think",
+                                                "end_tag": "/think",
                                                 "attributes": {
                                                     "type": "reasoning_content"
                                                 },
@@ -2074,23 +2051,12 @@ async def process_chat_response(
                                                 ),
                                             }
 
-                                if delta:
-                                    delta_count += 1
-                                    if delta_count >= delta_chunk_size:
-                                        await event_emitter(
-                                            {
-                                                "type": "chat:completion",
-                                                "data": data,
-                                            }
-                                        )
-                                        delta_count = 0
-                                else:
-                                    await event_emitter(
-                                        {
-                                            "type": "chat:completion",
-                                            "data": data,
-                                        }
-                                    )
+                                await event_emitter(
+                                    {
+                                        "type": "chat:completion",
+                                        "data": data,
+                                    }
+                                )
                         except Exception as e:
                             done = "data: [DONE]" in line
                             if done:
@@ -2117,15 +2083,6 @@ async def process_chat_response(
                                         }
                                     )
 
-                        if content_blocks[-1]["type"] == "reasoning":
-                            reasoning_block = content_blocks[-1]
-                            if reasoning_block.get("ended_at") is None:
-                                reasoning_block["ended_at"] = time.time()
-                                reasoning_block["duration"] = int(
-                                    reasoning_block["ended_at"]
-                                    - reasoning_block["started_at"]
-                                )
-
                     if response_tool_calls:
                         tool_calls.append(response_tool_calls)
 
@@ -2138,7 +2095,6 @@ async def process_chat_response(
                 tool_call_retries = 0
 
                 while len(tool_calls) > 0 and tool_call_retries < MAX_TOOL_CALL_RETRIES:
-
                     tool_call_retries += 1
 
                     response_tool_calls = tool_calls.pop(0)
@@ -2290,9 +2246,7 @@ async def process_chat_response(
                             "tools": form_data["tools"],
                             "messages": [
                                 *form_data["messages"],
-                                *convert_content_blocks_to_messages(
-                                    content_blocks, True
-                                ),
+                                *convert_content_blocks_to_messages(content_blocks),
                             ],
                         }
 

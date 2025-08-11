@@ -33,6 +33,7 @@
 	import InputVariablesModal from '../chat/MessageInput/InputVariablesModal.svelte';
 
 	export let placeholder = $i18n.t('Send a Message');
+	export let transparentBackground = false;
 
 	export let id = null;
 
@@ -59,7 +60,7 @@
 	export let scrollToBottom: Function = () => {};
 
 	export let acceptFiles = true;
-	export let showFormattingToolbar = true;
+	export let showFormattingButtons = true;
 
 	let showInputVariablesModal = false;
 	let inputVariables: Record<string, any> = {};
@@ -326,9 +327,7 @@
 					let imageUrl = event.target.result;
 
 					// Compress the image if settings or config require it
-					if ($settings?.imageCompression && $settings?.imageCompressionInChannels) {
-						imageUrl = await compressImageHandler(imageUrl, $settings, $config);
-					}
+					imageUrl = await compressImageHandler(imageUrl, $settings, $config);
 
 					files = [
 						...files,
@@ -701,7 +700,7 @@
 									bind:this={chatInputElement}
 									json={true}
 									messageInput={true}
-									{showFormattingToolbar}
+									{showFormattingButtons}
 									shiftEnter={!($settings?.ctrlEnterToSend ?? false) &&
 										(!$mobile ||
 											!(

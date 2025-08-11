@@ -115,24 +115,11 @@
 		info.name = name;
 
 		if (id === '') {
-			toast.error($i18n.t('Model ID is required.'));
-			loading = false;
-
-			return;
+			toast.error('Model ID is required.');
 		}
 
 		if (name === '') {
-			toast.error($i18n.t('Model Name is required.'));
-			loading = false;
-
-			return;
-		}
-
-		if (knowledge.some((item) => item.status === 'uploading')) {
-			toast.error($i18n.t('Please wait until all files are uploaded.'));
-			loading = false;
-
-			return;
+			toast.error('Model Name is required.');
 		}
 
 		info.params = { ...info.params, ...params };

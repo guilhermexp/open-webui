@@ -18,6 +18,7 @@
 	import Tooltip from '../Tooltip.svelte';
 	import CheckBox from '$lib/components/icons/CheckBox.svelte';
 	import ArrowLeftTag from '$lib/components/icons/ArrowLeftTag.svelte';
+	import ArrowRightTag from '$lib/components/icons/ArrowRightTag.svelte';
 </script>
 
 <div
@@ -79,7 +80,7 @@
 				class="hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-1.5 transition-all"
 				type="button"
 			>
-				<ArrowLeftTag className="rotate-180" />
+				<ArrowRightTag />
 			</button>
 		</Tooltip>
 	{/if}

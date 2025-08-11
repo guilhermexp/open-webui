@@ -7,15 +7,13 @@ from open_webui.models.models import (
     ModelUserResponse,
     Models,
 )
-
-from pydantic import BaseModel
 from open_webui.constants import ERROR_MESSAGES
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_access, has_permission
-from open_webui.config import ENABLE_ADMIN_WORKSPACE_CONTENT_ACCESS
+
 
 router = APIRouter()
 
@@ -27,7 +25,7 @@ router = APIRouter()
 
 @router.get("/", response_model=list[ModelUserResponse])
 async def get_models(id: Optional[str] = None, user=Depends(get_verified_user)):
-    if user.role == "admin" and ENABLE_ADMIN_WORKSPACE_CONTENT_ACCESS:
+    if user.role == "admin":
         return Models.get_models()
     else:
         return Models.get_models_by_user_id(user.id)
@@ -80,32 +78,6 @@ async def create_new_model(
             )
 
 
-############################
-# ExportModels
-############################
-
-
-@router.get("/export", response_model=list[ModelModel])
-async def export_models(user=Depends(get_admin_user)):
-    return Models.get_models()
-
-
-############################
-# SyncModels
-############################
-
-
-class SyncModelsForm(BaseModel):
-    models: list[ModelModel] = []
-
-
-@router.post("/sync", response_model=list[ModelModel])
-async def sync_models(
-    request: Request, form_data: SyncModelsForm, user=Depends(get_admin_user)
-):
-    return Models.sync_models(user.id, form_data.models)
-
-
 ###########################
 # GetModelById
 ###########################
@@ -130,7 +102,7 @@ async def get_model_by_id(id: str, user=Depends(get_verified_user)):
 
 
 ############################
-# ToggleModelById
+# ToggelModelById
 ############################
 
 

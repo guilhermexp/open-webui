@@ -18,7 +18,6 @@
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
-	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -29,7 +28,6 @@
 	let name = '';
 	let email = '';
 	let password = '';
-	let confirmPassword = '';
 
 	let ldapUsername = '';
 
@@ -65,13 +63,6 @@
 	};
 
 	const signUpHandler = async () => {
-		if ($config?.features?.enable_signup_password_confirmation) {
-			if (password !== confirmPassword) {
-				toast.error($i18n.t('Passwords do not match.'));
-				return;
-			}
-		}
-
 		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
 			(error) => {
 				toast.error(`${error}`);
@@ -101,19 +92,18 @@
 	};
 
 	const checkOauthCallback = async () => {
-		// Get the value of the 'token' cookie
-		function getCookie(name) {
-			const match = document.cookie.match(
-				new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
-			);
-			return match ? decodeURIComponent(match[1]) : null;
+		if (!$page.url.hash) {
+			return;
 		}
-
-		const token = getCookie('token');
+		const hash = $page.url.hash.substring(1);
+		if (!hash) {
+			return;
+		}
+		const params = new URLSearchParams(hash);
+		const token = params.get('token');
 		if (!token) {
 			return;
 		}
-
 		const sessionUser = await getSessionUser(token).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -121,35 +111,12 @@
 		if (!sessionUser) {
 			return;
 		}
-
 		localStorage.token = token;
 		await setSessionUser(sessionUser);
 	};
 
 	let onboarding = false;
 
-	async function setLogoImage() {
-		await tick();
-		const logo = document.getElementById('logo');
-
-		if (logo) {
-			const isDarkMode = document.documentElement.classList.contains('dark');
-
-			if (isDarkMode) {
-				const darkImage = new Image();
-				darkImage.src = `${WEBUI_BASE_URL}/static/favicon-dark.png`;
-
-				darkImage.onload = () => {
-					logo.src = `${WEBUI_BASE_URL}/static/favicon-dark.png`;
-					logo.style.filter = ''; // Ensure no inversion is applied if favicon-dark.png exists
-				};
-
-				darkImage.onerror = () => {
-					logo.style.filter = 'invert(1)'; // Invert image if favicon-dark.png is missing
-				};
-			}
-		}
-	}
 
 	onMount(async () => {
 		if ($user !== undefined) {
@@ -159,7 +126,6 @@
 		await checkOauthCallback();
 
 		loaded = true;
-		setLogoImage();
 
 		if (($config?.features.auth_trusted_header ?? false) || $config?.features.auth === false) {
 			await signInHandler();
@@ -189,6 +155,8 @@
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
 
 	{#if loaded}
+		
+
 		<div
 			class="fixed bg-transparent min-h-screen w-full flex justify-center font-primary z-50 text-black dark:text-white"
 			id="auth-container"
@@ -211,17 +179,6 @@
 				{:else}
 					<div class="my-auto flex flex-col justify-center items-center">
 						<div class=" sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
-							{#if $config?.metadata?.auth_logo_position === 'center'}
-								<div class="flex justify-center mb-6">
-									<img
-										id="logo"
-										crossorigin="anonymous"
-										src="{WEBUI_BASE_URL}/static/favicon.png"
-										class="size-24 rounded-full"
-										alt=""
-									/>
-								</div>
-							{/if}
 							<form
 								class=" flex flex-col justify-center"
 								on:submit={(e) => {
@@ -263,7 +220,7 @@
 													bind:value={name}
 													type="text"
 													id="name"
-													class="my-0.5 w-full text-sm outline-hidden bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-600"
+													class="my-0.5 w-full text-sm outline-hidden bg-transparent"
 													autocomplete="name"
 													placeholder={$i18n.t('Enter Your Full Name')}
 													required
@@ -279,7 +236,7 @@
 												<input
 													bind:value={ldapUsername}
 													type="text"
-													class="my-0.5 w-full text-sm outline-hidden bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-600"
+													class="my-0.5 w-full text-sm outline-hidden bg-transparent"
 													autocomplete="username"
 													name="username"
 													id="username"
@@ -296,7 +253,7 @@
 													bind:value={email}
 													type="email"
 													id="email"
-													class="my-0.5 w-full text-sm outline-hidden bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-600"
+													class="my-0.5 w-full text-sm outline-hidden bg-transparent"
 													autocomplete="email"
 													name="email"
 													placeholder={$i18n.t('Enter Your Email')}
@@ -309,37 +266,17 @@
 											<label for="password" class="text-sm font-medium text-left mb-1 block"
 												>{$i18n.t('Password')}</label
 											>
-											<SensitiveInput
+											<input
 												bind:value={password}
 												type="password"
 												id="password"
-												class="my-0.5 w-full text-sm outline-hidden bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-600"
+												class="my-0.5 w-full text-sm outline-hidden bg-transparent"
 												placeholder={$i18n.t('Enter Your Password')}
 												autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
 												name="password"
 												required
 											/>
 										</div>
-
-										{#if mode === 'signup' && $config?.features?.enable_signup_password_confirmation}
-											<div class="mt-2">
-												<label
-													for="confirm-password"
-													class="text-sm font-medium text-left mb-1 block"
-													>{$i18n.t('Confirm Password')}</label
-												>
-												<SensitiveInput
-													bind:value={confirmPassword}
-													type="password"
-													id="confirm-password"
-													class="my-0.5 w-full text-sm outline-hidden bg-transparent"
-													placeholder={$i18n.t('Confirm Your Password')}
-													autocomplete="new-password"
-													name="confirm-password"
-													required
-												/>
-											</div>
-										{/if}
 									</div>
 								{/if}
 								<div class="mt-5">
@@ -545,20 +482,5 @@
 			</div>
 		</div>
 
-		{#if !$config?.metadata?.auth_logo_position}
-			<div class="fixed m-10 z-50">
-				<div class="flex space-x-2">
-					<div class=" self-center">
-						<img
-							id="logo"
-							crossorigin="anonymous"
-							src="{WEBUI_BASE_URL}/static/favicon.png"
-							class=" w-6 rounded-full"
-							alt=""
-						/>
-					</div>
-				</div>
-			</div>
-		{/if}
 	{/if}
 </div>

@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { getContext, onMount, tick } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { formatFileSize, getLineCount } from '$lib/utils';
 	import { WEBUI_API_BASE_URL } from '$lib/constants';
-	import { getKnowledgeById } from '$lib/apis/knowledge';
 
 	const i18n = getContext('i18n');
 
@@ -12,7 +11,6 @@
 	import Switch from './Switch.svelte';
 	import Tooltip from './Tooltip.svelte';
 	import dayjs from 'dayjs';
-	import Spinner from './Spinner.svelte';
 
 	export let item;
 	export let show = false;
@@ -22,7 +20,6 @@
 
 	let isPdf = false;
 	let isAudio = false;
-	let loading = false;
 
 	$: isPDF =
 		item?.meta?.content_type === 'application/pdf' ||
@@ -35,28 +32,6 @@
 		(item?.name && item?.name.toLowerCase().endsWith('.ogg')) ||
 		(item?.name && item?.name.toLowerCase().endsWith('.m4a')) ||
 		(item?.name && item?.name.toLowerCase().endsWith('.webm'));
-
-	const loadContent = async () => {
-		if (item?.type === 'collection') {
-			loading = true;
-
-			const knowledge = await getKnowledgeById(localStorage.token, item.id).catch((e) => {
-				console.error('Error fetching knowledge base:', e);
-				return null;
-			});
-
-			if (knowledge) {
-				item.files = knowledge.files || [];
-			}
-			loading = false;
-		}
-
-		await tick();
-	};
-
-	$: if (show) {
-		loadContent();
-	}
 
 	onMount(() => {
 		console.log(item);
@@ -177,43 +152,37 @@
 		</div>
 
 		<div class="max-h-[75vh] overflow-auto">
-			{#if !loading}
-				{#if item?.type === 'collection'}
-					<div>
-						{#each item?.files as file}
-							<div class="flex items-center gap-2 mb-2">
-								<div class="flex-shrink-0 text-xs">
-									{file?.meta?.name}
-								</div>
+			{#if item?.type === 'collection'}
+				<div>
+					{#each item?.files as file}
+						<div class="flex items-center gap-2 mb-2">
+							<div class="flex-shrink-0 text-xs">
+								{file?.meta?.name}
 							</div>
-						{/each}
-					</div>
-				{:else if isPDF}
-					<iframe
-						title={item?.name}
-						src={`${WEBUI_API_BASE_URL}/files/${item.id}/content`}
-						class="w-full h-[70vh] border-0 rounded-lg mt-4"
-					/>
-				{:else}
-					{#if isAudio}
-						<audio
-							src={`${WEBUI_API_BASE_URL}/files/${item.id}/content`}
-							class="w-full border-0 rounded-lg mb-2"
-							controls
-							playsinline
-						/>
-					{/if}
-
-					{#if item?.file?.data}
-						<div class="max-h-96 overflow-scroll scrollbar-hidden text-xs whitespace-pre-wrap">
-							{item?.file?.data?.content ?? 'No content'}
 						</div>
-					{/if}
-				{/if}
-			{:else}
-				<div class="flex items-center justify-center py-6">
-					<Spinner className="size-5" />
+					{/each}
 				</div>
+			{:else if isPDF}
+				<iframe
+					title={item?.name}
+					src={`${WEBUI_API_BASE_URL}/files/${item.id}/content`}
+					class="w-full h-[70vh] border-0 rounded-lg mt-4"
+				/>
+			{:else}
+				{#if isAudio}
+					<audio
+						src={`${WEBUI_API_BASE_URL}/files/${item.id}/content`}
+						class="w-full border-0 rounded-lg mb-2"
+						controls
+						playsinline
+					/>
+				{/if}
+
+				{#if item?.file?.data}
+					<div class="max-h-96 overflow-scroll scrollbar-hidden text-xs whitespace-pre-wrap">
+						{item?.file?.data?.content ?? 'No content'}
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>
