@@ -6,6 +6,15 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# NOTES APP PROTECTION - Bloquear arquivos da versão completa
+Dockerfile*
+docker-compose*
+*.dockerfile
+deploy/
+k8s/
+kubernetes/
+helm/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Byte-compiled / optimized / DLL files

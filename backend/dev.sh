@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# NOTES APP PROTECTION CHECK
+if [ ! -f "../.notes-app-only" ]; then
+    echo "❌ ERRO: Esta aplicação deve funcionar APENAS como Notes App"
+    echo "❌ Arquivo de proteção não encontrado"
+    exit 1
+fi
+
+echo "✅ Proteção Notes App ativa - iniciando backend..."
+
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
     source venv/bin/activate
@@ -21,5 +30,5 @@ export PYTHONPATH="${PYTHONPATH}:/Users/guilhermevarela/Documents/Repositorios/o
 export ENABLE_WEB_SEARCH=true
 export WEBUI_AUTH=True
 export GLOBAL_LOG_LEVEL=WARNING
-PORT="${PORT:-8889}"
+PORT="${PORT:-5001}"
 python -m uvicorn open_webui.main:app --port $PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload

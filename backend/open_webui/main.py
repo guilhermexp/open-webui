@@ -528,6 +528,18 @@ https://github.com/open-webui/open-webui
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # NOTES APP PROTECTION CHECK
+    import os
+    # Caminho correto para o arquivo de proteção
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    protection_file = os.path.join(project_root, ".notes-app-only")
+    if not os.path.exists(protection_file):
+        print("❌ ERRO: Esta aplicação deve funcionar APENAS como Notes App")
+        print(f"❌ Arquivo de proteção não encontrado em: {protection_file}")
+        raise RuntimeError("Aplicação bloqueada - apenas Notes App autorizado")
+    
+    print("✅ Proteção Notes App ativa - iniciando aplicação...")
+    
     app.state.instance_id = INSTANCE_ID
     start_logger()
 

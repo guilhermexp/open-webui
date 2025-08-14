@@ -4,9 +4,10 @@
 	"description": "Aplicação especializada de notas baseada no Open WebUI - Editor avançado com chat integrado, transcrição de áudio e processamento de URLs",
 	"private": true,
 	"scripts": {
-		"dev": "npm run pyodide:fetch && cd backend && ./dev.sh & npm run dev:frontend",
-		"dev:frontend": "vite dev --host",
-		"dev:backend": "cd backend && ./dev.sh",
+		"prestart": "node scripts/notes-app-guard.js",
+		"dev": "node scripts/notes-app-guard.js && npm run pyodide:fetch && cd backend && ./dev.sh & npm run dev:frontend",
+		"dev:frontend": "node scripts/notes-app-guard.js && vite dev --host",
+		"dev:backend": "node scripts/notes-app-guard.js && cd backend && ./dev.sh",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"lint": "eslint . --fix && pylint backend/",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\" && black backend/ --exclude \".venv/|/venv/\"",

@@ -1,0 +1,18 @@
+# NOTES APP PROTECTION
+# Este arquivo garante que apenas a versão de notas funcione
+# NÃO REMOVA ESTE ARQUIVO
+
+NOTES_APP_ONLY=true
+VERSION=notes-app-v1.0.0
+DISABLE_FULL_WEBUI=true
+
+# Configurações de proteção
+ALLOWED_SCRIPTS=dev,dev:frontend,dev:backend,check,lint,format,test,pyodide:fetch
+BLOCKED_FEATURES=chat_workspace,model_management,admin_panel,playground,pipeline_system
+
+# Portas autorizadas
+FRONTEND_PORT=4173
+BACKEND_PORT=5001
+
+# Hash de verificação (não altere)
+PROTECTION_HASH=notes_app_only_$(date +%Y%m%d)

@@ -1,0 +1,24 @@
+# NOTES APP PROTECTION
+# Este arquivo bloqueia a criação de imagens Docker da versão completa
+
+# Bloquear tudo exceto arquivos específicos de notas
+*
+!backend/open_webui/routers/notes.py
+!backend/open_webui/routers/note_folders.py
+!backend/open_webui/routers/retrieval.py
+!backend/open_webui/routers/audio.py
+!backend/open_webui/routers/files.py
+!src/routes/(app)/notes/
+!src/lib/components/notes/
+!src/lib/apis/notes.ts
+!.notes-app-only
+
+# Bloquear Dockerfile se existir
+Dockerfile
+docker-compose.yml
+*.dockerfile
+
+# Bloquear scripts de deploy
+deploy/
+k8s/
+kubernetes/
