@@ -7,6 +7,7 @@
 	import { slide } from 'svelte/transition';
 	import { page } from '$app/stores';
 
+	import UserMenu from '$lib/components/layout/Sidebar/UserMenu.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
 	import PencilSquare from '../icons/PencilSquare.svelte';
 
@@ -53,7 +54,34 @@
 				{/if}
 			</div>
 
-			<div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400"><!-- UserMenu removed --></div>
+			<div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400">
+				{#if $user !== undefined}
+					<UserMenu
+						className="max-w-[240px]"
+						role={$user?.role}
+						help={true}
+						on:show={(e) => {
+							if (e.detail === 'archived-chat') {
+								showArchivedChats.set(true);
+							}
+						}}
+					>
+						<button
+							class="select-none flex rounded-xl p-1.5 w-full hover:bg-gray-50 dark:hover:bg-gray-850 transition"
+							aria-label="User Menu"
+						>
+							<div class=" self-center">
+								<img
+									src={$user?.profile_image_url}
+									class="size-6 object-cover rounded-full"
+									alt="User profile"
+									draggable="false"
+								/>
+							</div>
+						</button>
+					</UserMenu>
+				{/if}
+			</div>
 		</div>
 	</div>
 </nav>

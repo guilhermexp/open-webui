@@ -1,7 +1,7 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
 import { getTimeRange } from '$lib/utils';
 
-export const createNewChat = async (token: string, chat: any, folderId: string | null) => {
+export const createNewChat = async (token: string, chat: object, folderId: string | null) => {
 	let error = null;
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/new`, {
@@ -35,8 +35,8 @@ export const createNewChat = async (token: string, chat: any, folderId: string |
 
 export const importChat = async (
 	token: string,
-	chat: chat,
-	meta: any | null,
+	chat: object,
+	meta: object | null,
 	pinned?: boolean,
 	folderId?: string | null,
 	createdAt: number | null = null,
@@ -77,29 +77,23 @@ export const importChat = async (
 	return res;
 };
 
-export const getChatList = async (token: string, page: number = 1) => {
-	if (!token) {
-		throw new Error('Token não fornecido');
+export const getChatList = async (token: string = '', page: number | null = null) => {
+	let error = null;
+	const searchParams = new URLSearchParams();
+
+	if (page !== null) {
+		searchParams.append('page', `${page}`);
 	}
 
-	let error = null;
-
-	const searchParams = new URLSearchParams();
-	searchParams.append('page', `${page}`);
-
-	const res = await fetch(`${WEBUI_API_BASE_URL}/chats?${searchParams.toString()}`, {
+	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/?${searchParams.toString()}`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
-			authorization: `Bearer ${token}`
+			...(token && { authorization: `Bearer ${token}` })
 		}
 	})
 		.then(async (res) => {
-			const contentType = res.headers.get('content-type');
-			if (!contentType || !contentType.includes('application/json')) {
-				throw new Error('Server returned non-JSON response');
-			}
 			if (!res.ok) throw await res.json();
 			return res.json();
 		})
@@ -107,17 +101,13 @@ export const getChatList = async (token: string, page: number = 1) => {
 			return json;
 		})
 		.catch((err) => {
-			error = err.detail || err.message || err;
-			console.error('Error fetching chat list:', err);
+			error = err;
+			console.error(err);
 			return null;
 		});
 
 	if (error) {
 		throw error;
-	}
-
-	if (!res) {
-		return [];
 	}
 
 	return res.map((chat) => ({
@@ -843,7 +833,7 @@ export const deleteSharedChatById = async (token: string, id: string) => {
 	return res;
 };
 
-export const updateChatById = async (token: string, id: string, chat: any) => {
+export const updateChatById = async (token: string, id: string, chat: object) => {
 	let error = null;
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/chats/${id}`, {

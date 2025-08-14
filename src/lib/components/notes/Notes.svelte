@@ -58,8 +58,7 @@
 	let importFiles = '';
 	let query = '';
 
-	// Always use list view mode
-	let viewMode = 'list';
+	export let viewMode = localStorage.getItem('notesViewMode') || 'grid';
 	
 	let noteItems = [];
 	let fuse = null;
@@ -432,7 +431,7 @@
 						</div>
 
 						<div
-							class="mb-5 gap-2.5 flex flex-col"
+							class="mb-5 gap-2.5 {viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'flex flex-col'}"
 						>
 							{#each notes[timeRange] as note, idx (note.id)}
 								<div
@@ -441,16 +440,65 @@
 									<div class=" flex flex-1 space-x-4 cursor-pointer w-full">
 										<a
 											href={`/notes/${note.id}`}
-											class="w-full -translate-y-0.5 flex flex-row items-center gap-4"
+											class="w-full -translate-y-0.5 flex {viewMode === 'grid' ? 'flex-col justify-between' : 'flex-row items-center gap-4'}"
 										>
-											<div class="flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-												<div class="  flex items-center gap-2 self-center justify-between md:flex-1">
-													<div class=" font-semibold line-clamp-1 capitalize text-base">{note.title}</div>
+											<div class="{viewMode === 'grid' ? 'flex-1' : 'flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-4'}">
+												<div class="  flex items-center gap-2 self-center {viewMode === 'grid' ? 'mb-1' : ''} justify-between {viewMode === 'list' ? 'md:flex-1' : ''}">
+													<div class=" font-semibold line-clamp-1 capitalize {viewMode === 'list' ? 'text-base' : ''}">{note.title}</div>
 
+													{#if viewMode === 'grid'}
+													<div>
+														<NoteMenu
+															onDownload={(type) => {
+																selectedNote = note;
+
+																downloadHandler(type);
+															}}
+															onCopyLink={async () => {
+																const baseUrl = window.location.origin;
+																const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
+
+																if (res) {
+																	toast.success($i18n.t('Copied link to clipboard'));
+																} else {
+																	toast.error($i18n.t('Failed to copy link'));
+																}
+															}}
+															onMoveToFolder={async (folderId) => {
+																console.log('Moving note', note.id, 'to folder', folderId);
+																// Update note folder
+																const res = await updateNoteFolderIdById(localStorage.token, note.id, folderId);
+																console.log('Move result:', res);
+																if (res) {
+																	toast.success($i18n.t('Note moved successfully'));
+																	// Reload notes
+																	noteItems = await getNotes(localStorage.token, true, currentFolderId);
+																	fuse = new Fuse(noteItems, {
+																		keys: ['title', 'data.content.md']
+																	});
+																} else {
+																	toast.error($i18n.t('Failed to move note'));
+																}
+															}}
+															folders={noteFolders}
+															onDelete={() => {
+																selectedNote = note;
+																showDeleteConfirm = true;
+															}}
+														>
+															<button
+																class="self-center w-fit text-sm p-1 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
+																type="button"
+															>
+																<EllipsisHorizontal className="size-5" />
+															</button>
+														</NoteMenu>
+													</div>
+													{/if}
 												</div>
 
 												<div
-													class=" text-xs text-gray-500 dark:text-gray-500 line-clamp-1 md:flex-1"
+													class=" text-xs text-gray-500 dark:text-gray-500 {viewMode === 'grid' ? 'mb-3 line-clamp-3 min-h-10' : 'line-clamp-1 md:flex-1'}"
 												>
 													{#if note.data?.content?.md}
 														{note.data?.content?.md}
@@ -459,6 +507,7 @@
 													{/if}
 												</div>
 												
+												{#if viewMode === 'list'}
 												<div class=" text-xs text-gray-500 dark:text-gray-500 flex items-center gap-4 md:gap-6">
 													<div class="whitespace-nowrap">
 														{dayjs(note.updated_at / 1000000).fromNow()}
@@ -477,9 +526,31 @@
 														</div>
 													</Tooltip>
 												</div>
+												{/if}
 											</div>
 
+											{#if viewMode === 'grid'}
+											<div class=" text-xs px-0.5 w-full flex justify-between items-center">
+												<div>
+													{dayjs(note.updated_at / 1000000).fromNow()}
+												</div>
+												<Tooltip
+													content={note?.user?.email ?? $i18n.t('Deleted User')}
+													className="flex shrink-0"
+													placement="top-start"
+												>
+													<div class="shrink-0 text-gray-500">
+														{$i18n.t('By {{name}}', {
+															name: capitalizeFirstLetter(
+																note?.user?.name ?? note?.user?.email ?? $i18n.t('Deleted User')
+															)
+														})}
+													</div>
+												</Tooltip>
+											</div>
+											{/if}
 											
+											{#if viewMode === 'list'}
 											<div>
 												<NoteMenu
 													onDownload={(type) => {
@@ -527,6 +598,7 @@
 													</button>
 												</NoteMenu>
 											</div>
+											{/if}
 										</a>
 									</div>
 								</div>

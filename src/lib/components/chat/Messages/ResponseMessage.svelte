@@ -11,7 +11,7 @@
 
 	const dispatch = createEventDispatcher();
 
-	// Evaluations removed - import { createNewFeedback, getFeedbackById, updateFeedbackById } from '$lib/apis/evaluations';
+	import { createNewFeedback, getFeedbackById, updateFeedbackById } from '$lib/apis/evaluations';
 	import { getChatById } from '$lib/apis/chats';
 	import { generateTags } from '$lib/apis';
 
@@ -499,25 +499,24 @@
 		}, {});
 		feedbackItem.meta.base_models = baseModels;
 
-		// Evaluations functionality removed
-		// let feedback = null;
-		// if (message?.feedbackId) {
-		// 	feedback = await updateFeedbackById(
-		// 		localStorage.token,
-		// 		message.feedbackId,
-		// 		feedbackItem
-		// 	).catch((error) => {
-		// 		toast.error(`${error}`);
-		// 	});
-		// } else {
-		// 	feedback = await createNewFeedback(localStorage.token, feedbackItem).catch((error) => {
-		// 		toast.error(`${error}`);
-		// 	});
+		let feedback = null;
+		if (message?.feedbackId) {
+			feedback = await updateFeedbackById(
+				localStorage.token,
+				message.feedbackId,
+				feedbackItem
+			).catch((error) => {
+				toast.error(`${error}`);
+			});
+		} else {
+			feedback = await createNewFeedback(localStorage.token, feedbackItem).catch((error) => {
+				toast.error(`${error}`);
+			});
 
-		// 	if (feedback) {
-		// 		updatedMessage.feedbackId = feedback.id;
-		// 	}
-		// }
+			if (feedback) {
+				updatedMessage.feedbackId = feedback.id;
+			}
+		}
 
 		console.log(updatedMessage);
 		saveMessage(message.id, updatedMessage);
@@ -542,14 +541,13 @@
 					feedbackItem.data.tags = tags;
 
 					saveMessage(message.id, updatedMessage);
-					// Evaluations removed
-					// await updateFeedbackById(
-					// 	localStorage.token,
-					// 	updatedMessage.feedbackId,
-					// 	feedbackItem
-					// ).catch((error) => {
-					// 	toast.error(`${error}`);
-					// });
+					await updateFeedbackById(
+						localStorage.token,
+						updatedMessage.feedbackId,
+						feedbackItem
+					).catch((error) => {
+						toast.error(`${error}`);
+					});
 				}
 			}
 		}

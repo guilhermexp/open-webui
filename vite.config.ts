@@ -22,22 +22,7 @@ export default defineConfig({
 			'/api': {
 				target: 'http://localhost:8083',
 				changeOrigin: true,
-        secure: false
-      },
-      // Proxy backend websockets for Socket.IO
-      '/ws': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-        ws: true
-      },
-      // Proxy backend static files (favicons, assets) during dev
-      '/static': {
-        target: 'http://localhost:8083',
-        changeOrigin: true
-      },
-      '/favicon.png': {
-        target: 'http://localhost:8083',
-        changeOrigin: true
+				secure: false
 			}
 		}
 	}

@@ -1,16 +1,12 @@
-<script lang="ts">
+<script>
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
+	import Evaluations from '$lib/components/admin/Evaluations.svelte';
+
 	onMount(() => {
-		// Redirect to users since evaluations is removed
-		goto('/admin/users');
+		goto('/admin/evaluations/leaderboard');
 	});
 </script>
 
-<div class="flex items-center justify-center h-full">
-	<div class="text-center">
-		<h1 class="text-2xl font-bold mb-4">Esta página foi removida</h1>
-		<p>Redirecionando para Usuários...</p>
-	</div>
-</div>
+<Evaluations />
