@@ -1,12 +1,12 @@
 <script>
-	import { knowledge, prompts } from '$lib/stores';
+	// import { knowledge, prompts } from '$lib/stores'; // Removed in notes-only app
 
 	import { removeLastWordFromString } from '$lib/utils';
-	import { getPrompts } from '$lib/apis/prompts';
-	import { getKnowledgeBases } from '$lib/apis/knowledge';
+	// import { getPrompts } from '$lib/apis/prompts'; // Removed in notes-only app
+	// import { getKnowledgeBases } from '$lib/apis/knowledge'; // Removed in notes-only app
 
-	import Prompts from './Commands/Prompts.svelte';
-	import Knowledge from './Commands/Knowledge.svelte';
+	// import Prompts from './Commands/Prompts.svelte'; // Removed in notes-only app
+	// import Knowledge from './Commands/Knowledge.svelte'; // Removed in notes-only app
 	import Models from './Commands/Models.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
@@ -37,64 +37,22 @@
 
 	const init = async () => {
 		loading = true;
-		await Promise.all([
-			(async () => {
-				prompts.set(await getPrompts(localStorage.token));
-			})(),
-			(async () => {
-				knowledge.set(await getKnowledgeBases(localStorage.token));
-			})()
-		]);
+		// No longer need to load prompts and knowledge in notes-only app
+		// await Promise.all([
+		// 	(async () => {
+		// 		prompts.set(await getPrompts(localStorage.token));
+		// 	})(),
+		// 	(async () => {
+		// 		knowledge.set(await getKnowledgeBases(localStorage.token));
+		// 	})()
+		// ]);
 		loading = false;
 	};
 </script>
 
 {#if show}
 	{#if !loading}
-		{#if command?.charAt(0) === '/'}
-			<Prompts
-				bind:this={commandElement}
-				{command}
-				onSelect={(e) => {
-					const { type, data } = e;
-
-					if (type === 'prompt') {
-						insertTextHandler(data.content);
-					}
-				}}
-			/>
-		{:else if (command?.charAt(0) === '#' && command.startsWith('#') && !command.includes('# ')) || ('\\#' === command.slice(0, 2) && command.startsWith('#') && !command.includes('# '))}
-			<Knowledge
-				bind:this={commandElement}
-				command={command.includes('\\#') ? command.slice(2) : command}
-				onSelect={(e) => {
-					const { type, data } = e;
-
-					if (type === 'knowledge') {
-						insertTextHandler('');
-
-						onUpload({
-							type: 'file',
-							data: data
-						});
-					} else if (type === 'youtube') {
-						insertTextHandler('');
-
-						onUpload({
-							type: 'youtube',
-							data: data
-						});
-					} else if (type === 'web') {
-						insertTextHandler('');
-
-						onUpload({
-							type: 'web',
-							data: data
-						});
-					}
-				}}
-			/>
-		{:else if command?.charAt(0) === '@'}
+		{#if command?.charAt(0) === '@'}
 			<Models
 				bind:this={commandElement}
 				{command}

@@ -72,7 +72,7 @@ export const showSearch = writable(false);
 export const showSettings = writable(false);
 export const showShortcuts = writable(false);
 export const showArchivedChats = writable(false);
-export const showChangelog = writable(false);
+// export const showChangelog = writable(false); // Removed - ChangelogModal no longer used
 
 export const showControls = writable(false);
 export const showOverview = writable(false);
@@ -143,7 +143,7 @@ type Settings = {
 	toolServers?: never[];
 	detectArtifacts?: boolean;
 	showUpdateToast?: boolean;
-	showChangelog?: boolean;
+	// showChangelog?: boolean; // Removed - ChangelogModal no longer used
 	showEmojiInCall?: boolean;
 	voiceInterruption?: boolean;
 	collapseCodeBlocks?: boolean;

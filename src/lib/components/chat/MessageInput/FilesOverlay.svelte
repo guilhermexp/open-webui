@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import { showSidebar } from '$lib/stores';
-	import AddFilesPlaceholder from '$lib/components/AddFilesPlaceholder.svelte';
+	
+	const i18n = getContext('i18n');
 
 	export let show = false;
 	let overlayElement = null;
@@ -26,8 +28,14 @@
 	>
 		<div class="absolute w-full h-full backdrop-blur-sm bg-gray-800/40 flex justify-center">
 			<div class="m-auto pt-64 flex flex-col justify-center">
-				<div class="max-w-md">
-					<AddFilesPlaceholder />
+				<div class="max-w-md px-3">
+					<div class="text-center text-6xl mb-3">📄</div>
+					<div class="text-center dark:text-white text-xl font-semibold z-50">
+						{$i18n.t('Add Files')}
+					</div>
+					<div class="px-2 mt-2 text-center text-sm dark:text-gray-200 w-full">
+						{$i18n.t('Drop any files here to upload')}
+					</div>
 				</div>
 			</div>
 		</div>
