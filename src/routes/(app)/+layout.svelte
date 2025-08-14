@@ -46,8 +46,10 @@
 </script>
 
 {#if loaded}
-	<div class="app bg-white dark:bg-gray-900 min-h-screen">
-		<slot />
+	<div class="app relative">
+		<div class="text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end">
+			<slot />
+		</div>
 	</div>
 {:else}
 	<div class="app bg-white dark:bg-gray-900">
