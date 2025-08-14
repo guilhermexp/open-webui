@@ -12,6 +12,7 @@
 	import { showSettings, mobile, showSidebar, user } from '$lib/stores';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import ThemeToggle from '$lib/components/common/ThemeToggle.svelte';
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
 	import QuestionMarkCircle from '$lib/components/icons/QuestionMarkCircle.svelte';
 	import Map from '$lib/components/icons/Map.svelte';
@@ -83,6 +84,10 @@
 				</div>
 				<div class=" self-center truncate">{$i18n.t('Settings')}</div>
 			</DropdownMenu.Item>
+
+			<div class="px-3 py-1">
+				<ThemeToggle />
+			</div>
 
 			<DropdownMenu.Item
 				class="flex rounded-md py-1.5 px-3 w-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"

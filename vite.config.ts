@@ -17,10 +17,10 @@ export default defineConfig({
 		APP_BUILD_HASH: JSON.stringify(commitHash)
 	},
 	server: {
-		port: 5173,
+		port: 4173,
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8082',
+				target: 'http://localhost:8888',
 				changeOrigin: true,
 				secure: false
 			}

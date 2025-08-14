@@ -41,6 +41,43 @@
 		color: theme(--color-gray-400);
 	}
 
+	/* Dark mode specific styles */
+	.dark {
+		color-scheme: dark;
+	}
+
+	.light {
+		color-scheme: light;
+	}
+
+	/* Ensure text colors are correct in dark mode */
+	.dark body,
+	.dark div,
+	.dark span,
+	.dark p,
+	.dark h1,
+	.dark h2,
+	.dark h3,
+	.dark h4,
+	.dark h5,
+	.dark h6 {
+		color: theme(--color-gray-100);
+	}
+
+	/* Light mode text colors */
+	.light body,
+	.light div,
+	.light span,
+	.light p,
+	.light h1,
+	.light h2,
+	.light h3,
+	.light h4,
+	.light h5,
+	.light h6 {
+		color: theme(--color-gray-900);
+	}
+
 	input[type='checkbox'] {
 		@apply appearance-none size-3.5 align-middle bg-white border border-gray-300 rounded transition cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:border-gray-600 self-center;
 		/* Center the custom mark */
