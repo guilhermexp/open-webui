@@ -20,5 +20,6 @@ export CORS_ALLOW_ORIGIN=http://localhost:4173
 export PYTHONPATH="${PYTHONPATH}:/Users/guilhermevarela/Documents/Repositorios/open-webui/backend"
 export ENABLE_WEB_SEARCH=true
 export WEBUI_AUTH=True
-PORT="${PORT:-8888}"
+export GLOBAL_LOG_LEVEL=WARNING
+PORT="${PORT:-8889}"
 python -m uvicorn open_webui.main:app --port $PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload

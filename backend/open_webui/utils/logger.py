@@ -107,13 +107,38 @@ def file_format(record: "Record"):
     return "{extra[file_extra]}\n"
 
 
+def filter_noise_logs(record):
+    """Filter out noisy logs that clutter development environment"""
+    message = str(record.get("message", ""))
+    
+    # Filter out Ollama connection errors (since we don't use Ollama in notes-only app)
+    if "Cannot connect to host localhost:11434" in message:
+        return False
+    
+    # Filter out HTTP requests for chats/models that don't exist in notes app
+    if any(pattern in message for pattern in [
+        "GET /api/v1/chats",
+        "POST /api/v1/chats", 
+        "GET /api/models",
+        "get_all_models()",
+        "httptools_impl:send"
+    ]):
+        return False
+        
+    # Filter out auditable records
+    if "auditable" in record.get("extra", {}):
+        return False
+    
+    return True
+
+
 def start_logger():
     """
     Initializes and configures Loguru's logger with distinct handlers:
 
     A console (stdout) handler for general log messages (excluding those marked as auditable).
     An optional file handler for audit logs if audit logging is enabled.
-    Additionally, this function reconfigures Python’s standard logging to route through Loguru and adjusts logging levels for Uvicorn.
+    Additionally, this function reconfigures Python's standard logging to route through Loguru and adjusts logging levels for Uvicorn.
 
     Parameters:
     enable_audit_logging (bool): Determines whether audit-specific log entries should be recorded to file.
@@ -124,7 +149,7 @@ def start_logger():
         sys.stdout,
         level=GLOBAL_LOG_LEVEL,
         format=stdout_format,
-        filter=lambda record: "auditable" not in record["extra"],
+        filter=filter_noise_logs,
     )
 
     if AUDIT_LOG_LEVEL != "NONE":
@@ -144,9 +169,10 @@ def start_logger():
         handlers=[InterceptHandler()], level=GLOBAL_LOG_LEVEL, force=True
     )
 
-    for uvicorn_logger_name in ["uvicorn", "uvicorn.error"]:
+    # Silence noisy uvicorn loggers for cleaner development experience
+    for uvicorn_logger_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
         uvicorn_logger = logging.getLogger(uvicorn_logger_name)
-        uvicorn_logger.setLevel(GLOBAL_LOG_LEVEL)
+        uvicorn_logger.setLevel("ERROR")  # Only show errors, not access logs
         uvicorn_logger.handlers = []
 
     for uvicorn_logger_name in AUDIT_UVICORN_LOGGER_NAMES:
