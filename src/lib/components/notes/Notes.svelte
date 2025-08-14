@@ -30,12 +30,10 @@
 	$: loadLocale($i18n.languages);
 
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { onMount, getContext, onDestroy } from 'svelte';
 	import { WEBUI_NAME, config, prompts as _prompts, user } from '$lib/stores';
 
-	import { createNewNote, deleteNoteById, getNotes, updateNoteFolderIdById } from '$lib/apis/notes';
-	import { getNoteFolderById, getNoteFolders, createNewNoteFolder } from '$lib/apis/note-folders';
+	import { createNewNote, deleteNoteById, getNotes } from '$lib/apis/notes';
 	import { capitalizeFirstLetter, copyToClipboard, getTimeRange } from '$lib/utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -46,11 +44,9 @@
 	import Spinner from '../common/Spinner.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
-	import FilesOverlay from '../common/FilesOverlay.svelte';
+	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
 	import { marked } from 'marked';
 	import XMark from '../icons/XMark.svelte';
-	import Folder from '../common/Folder.svelte';
-	import NoteFolderModal from '../layout/Sidebar/NoteFolders/NoteFolderModal.svelte';
 
 	const i18n = getContext('i18n');
 	let loaded = false;
@@ -58,28 +54,11 @@
 	let importFiles = '';
 	let query = '';
 
-	export let viewMode = localStorage.getItem('notesViewMode') || 'grid';
-	
 	let noteItems = [];
 	let fuse = null;
 
 	let selectedNote = null;
 	let notes = {};
-	let currentFolderId = null;
-	let currentFolder = null;
-	let noteFolders = [];
-	let showCreateFolderModal = false;
-
-	$: currentFolderId = $page.url.searchParams.get('folder');
-	
-	// React to folder changes
-	$: {
-		if (loaded && currentFolderId !== undefined) {
-			console.log('Current folder ID changed to:', currentFolderId);
-			init();
-		}
-	}
-	
 	$: if (fuse) {
 		notes = groupNotes(
 			query
@@ -114,23 +93,11 @@
 	};
 
 	const init = async () => {
-		console.log('Notes init() called with currentFolderId:', currentFolderId);
-		noteItems = await getNotes(localStorage.token, true, currentFolderId);
-		console.log('Loaded notes:', noteItems);
+		noteItems = await getNotes(localStorage.token, true);
 
 		fuse = new Fuse(noteItems, {
 			keys: ['title']
 		});
-		
-		// Load folder info if we're in a folder
-		if (currentFolderId) {
-			currentFolder = await getNoteFolderById(localStorage.token, currentFolderId);
-			console.log('Current folder:', currentFolder);
-		}
-		
-		// Load all folders for the dropdown
-		noteFolders = await getNoteFolders(localStorage.token);
-		console.log('All folders:', noteFolders);
 	};
 
 	const createNoteHandler = async () => {
@@ -146,8 +113,7 @@
 				}
 			},
 			meta: null,
-			access_control: {},
-			folder_id: currentFolderId
+			access_control: {}
 		}).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -155,17 +121,6 @@
 
 		if (res) {
 			goto(`/notes/${res.id}`);
-		}
-	};
-	
-	const createFolderHandler = async (folder) => {
-		const res = await createNewNoteFolder(localStorage.token, folder).catch((error) => {
-			toast.error(`${error}`);
-			return null;
-		});
-		
-		if (res) {
-			await init();
 		}
 	};
 
@@ -353,7 +308,6 @@
 		dropzoneElement?.addEventListener('drop', onDrop);
 		dropzoneElement?.addEventListener('dragleave', onDragLeave);
 	});
-	
 </script>
 
 <svelte:head>
@@ -363,11 +317,6 @@
 </svelte:head>
 
 <FilesOverlay show={dragged} />
-
-<NoteFolderModal
-	bind:show={showCreateFolderModal}
-	onSubmit={createFolderHandler}
-/>
 
 <div id="notes-container" class="w-full min-h-full h-full">
 	{#if loaded}
@@ -385,16 +334,6 @@
 		</DeleteConfirmDialog>
 
 		<div class="flex flex-col gap-1 px-3.5">
-			{#if currentFolder}
-				<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
-					<a href="/notes" class="hover:text-gray-900 dark:hover:text-gray-100">
-						{$i18n.t('All Notes')}
-					</a>
-					<ChevronRight className="size-3" />
-					<span class="text-gray-900 dark:text-gray-100">{currentFolder.name}</span>
-				</div>
-			{/if}
-			
 			<div class=" flex flex-1 items-center w-full space-x-2">
 				<div class="flex flex-1 items-center">
 					<div class=" self-center ml-1 mr-3">
@@ -431,7 +370,7 @@
 						</div>
 
 						<div
-							class="mb-5 gap-2.5 {viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'flex flex-col'}"
+							class="mb-5 gap-2.5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
 						>
 							{#each notes[timeRange] as note, idx (note.id)}
 								<div
@@ -440,13 +379,12 @@
 									<div class=" flex flex-1 space-x-4 cursor-pointer w-full">
 										<a
 											href={`/notes/${note.id}`}
-											class="w-full -translate-y-0.5 flex {viewMode === 'grid' ? 'flex-col justify-between' : 'flex-row items-center gap-4'}"
+											class="w-full -translate-y-0.5 flex flex-col justify-between"
 										>
-											<div class="{viewMode === 'grid' ? 'flex-1' : 'flex-1 flex flex-col md:flex-row md:items-center gap-2 md:gap-4'}">
-												<div class="  flex items-center gap-2 self-center {viewMode === 'grid' ? 'mb-1' : ''} justify-between {viewMode === 'list' ? 'md:flex-1' : ''}">
-													<div class=" font-semibold line-clamp-1 capitalize {viewMode === 'list' ? 'text-base' : ''}">{note.title}</div>
+											<div class="flex-1">
+												<div class="  flex items-center gap-2 self-center mb-1 justify-between">
+													<div class=" font-semibold line-clamp-1 capitalize">{note.title}</div>
 
-													{#if viewMode === 'grid'}
 													<div>
 														<NoteMenu
 															onDownload={(type) => {
@@ -464,23 +402,6 @@
 																	toast.error($i18n.t('Failed to copy link'));
 																}
 															}}
-															onMoveToFolder={async (folderId) => {
-																console.log('Moving note', note.id, 'to folder', folderId);
-																// Update note folder
-																const res = await updateNoteFolderIdById(localStorage.token, note.id, folderId);
-																console.log('Move result:', res);
-																if (res) {
-																	toast.success($i18n.t('Note moved successfully'));
-																	// Reload notes
-																	noteItems = await getNotes(localStorage.token, true, currentFolderId);
-																	fuse = new Fuse(noteItems, {
-																		keys: ['title', 'data.content.md']
-																	});
-																} else {
-																	toast.error($i18n.t('Failed to move note'));
-																}
-															}}
-															folders={noteFolders}
 															onDelete={() => {
 																selectedNote = note;
 																showDeleteConfirm = true;
@@ -494,11 +415,10 @@
 															</button>
 														</NoteMenu>
 													</div>
-													{/if}
 												</div>
 
 												<div
-													class=" text-xs text-gray-500 dark:text-gray-500 {viewMode === 'grid' ? 'mb-3 line-clamp-3 min-h-10' : 'line-clamp-1 md:flex-1'}"
+													class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
 												>
 													{#if note.data?.content?.md}
 														{note.data?.content?.md}
@@ -506,30 +426,8 @@
 														{$i18n.t('No content')}
 													{/if}
 												</div>
-												
-												{#if viewMode === 'list'}
-												<div class=" text-xs text-gray-500 dark:text-gray-500 flex items-center gap-4 md:gap-6">
-													<div class="whitespace-nowrap">
-														{dayjs(note.updated_at / 1000000).fromNow()}
-													</div>
-													<Tooltip
-														content={note?.user?.email ?? $i18n.t('Deleted User')}
-														className="flex shrink-0"
-														placement="top-start"
-													>
-														<div class="shrink-0 text-gray-500 hidden md:block">
-															{$i18n.t('By {{name}}', {
-																name: capitalizeFirstLetter(
-																	note?.user?.name ?? note?.user?.email ?? $i18n.t('Deleted User')
-																)
-															})}
-														</div>
-													</Tooltip>
-												</div>
-												{/if}
 											</div>
 
-											{#if viewMode === 'grid'}
 											<div class=" text-xs px-0.5 w-full flex justify-between items-center">
 												<div>
 													{dayjs(note.updated_at / 1000000).fromNow()}
@@ -548,57 +446,6 @@
 													</div>
 												</Tooltip>
 											</div>
-											{/if}
-											
-											{#if viewMode === 'list'}
-											<div>
-												<NoteMenu
-													onDownload={(type) => {
-														selectedNote = note;
-
-														downloadHandler(type);
-													}}
-													onCopyLink={async () => {
-														const baseUrl = window.location.origin;
-														const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
-
-														if (res) {
-															toast.success($i18n.t('Copied link to clipboard'));
-														} else {
-															toast.error($i18n.t('Failed to copy link'));
-														}
-													}}
-													onMoveToFolder={async (folderId) => {
-														console.log('Moving note', note.id, 'to folder', folderId);
-														// Update note folder
-														const res = await updateNoteFolderIdById(localStorage.token, note.id, folderId);
-														console.log('Move result:', res);
-														if (res) {
-															toast.success($i18n.t('Note moved successfully'));
-															// Reload notes
-															noteItems = await getNotes(localStorage.token, true, currentFolderId);
-															fuse = new Fuse(noteItems, {
-																keys: ['title', 'data.content.md']
-															});
-														} else {
-															toast.error($i18n.t('Failed to move note'));
-														}
-													}}
-													folders={noteFolders}
-													onDelete={() => {
-														selectedNote = note;
-														showDeleteConfirm = true;
-													}}
-												>
-													<button
-														class="self-center w-fit text-sm p-1 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
-														type="button"
-													>
-														<EllipsisHorizontal className="size-5" />
-													</button>
-												</NoteMenu>
-											</div>
-											{/if}
 										</a>
 									</div>
 								</div>
@@ -621,29 +468,26 @@
 			{/if}
 		</div>
 
+		<div class="absolute bottom-0 left-0 right-0 p-5 max-w-full flex justify-end">
+			<div class="flex gap-0.5 justify-end w-full">
+				<Tooltip content={$i18n.t('Create Note')}>
+					<button
+						class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
+						type="button"
+						on:click={async () => {
+							createNoteHandler();
+						}}
+					>
+						<Plus className="size-4.5" strokeWidth="2.5" />
+					</button>
+				</Tooltip>
 
-		<!-- Floating Action Button for Creating New Note -->
-		<div class="fixed bottom-4 right-4 z-10">
-			<button
-				class="bg-gray-900 dark:bg-white text-white dark:text-gray-800 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-				on:click={createNoteHandler}
-				title={$i18n.t('Create New Note')}
+				<!-- <button
+				class="cursor-pointer p-2.5 flex rounded-full hover:bg-gray-100 dark:hover:bg-gray-850 transition shadow-xl"
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="2"
-					stroke="currentColor"
-					class="size-5"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M12 4.5v15m7.5-7.5h-15"
-					/>
-				</svg>
-			</button>
+				<SparklesSolid className="size-4" />
+			</button> -->
+			</div>
 		</div>
 
 		<!-- {#if $user?.role === 'admin'}

@@ -48,7 +48,7 @@
 	import { splitStream } from '$lib/utils';
 
 	import Messages from '$lib/components/notes/NoteEditor/Chat/Messages.svelte';
-	import MessageInput from '$lib/components/notes/MessageInput.svelte';
+	import MessageInput from '$lib/components/channel/MessageInput.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Pencil from '$lib/components/icons/Pencil.svelte';
@@ -349,7 +349,7 @@ Based on the user's instruction, update and enhance the existing notes or select
 				content={$i18n.t(
 					'This feature is experimental and may be modified or discontinued without notice.'
 				)}
-				placement="top"
+				position="top"
 				className="inline-block"
 			>
 				<span class="text-gray-500 text-sm">({$i18n.t('Experimental')})</span>
@@ -390,7 +390,7 @@ Based on the user's instruction, update and enhance the existing notes or select
 						bind:chatInputElement
 						acceptFiles={false}
 						inputLoading={loading}
-						showFormattingButtons={false}
+						showFormattingToolbar={false}
 						onSubmit={submitHandler}
 						{onStop}
 					>

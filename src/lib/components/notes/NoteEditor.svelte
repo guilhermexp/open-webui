@@ -11,15 +11,9 @@
 	const i18n = getContext('i18n');
 
 	import { marked } from 'marked';
-	// Configurar marked para preservar links corretamente
-	marked.use({
-		breaks: true,
-		gfm: true
-	});
 	import { toast } from 'svelte-sonner';
 
 	import { goto } from '$app/navigation';
-	import { extractYoutubeUrls, extractInstagramUrls, processWebUrl } from '$lib/apis/retrieval';
 
 	import dayjs from '$lib/dayjs';
 	import calendar from 'dayjs/plugin/calendar';
@@ -37,14 +31,23 @@
 	import { uploadFile } from '$lib/apis/files';
 	import { chatCompletion, generateOpenAIChatCompletion } from '$lib/apis/openai';
 
-	import { config, models, settings, showSidebar, socket, user, WEBUI_NAME } from '$lib/stores';
+	import {
+		config,
+		mobile,
+		models,
+		settings,
+		showSidebar,
+		socket,
+		user,
+		WEBUI_NAME
+	} from '$lib/stores';
 
 	import NotePanel from '$lib/components/notes/NotePanel.svelte';
 
 	import Controls from './NoteEditor/Controls.svelte';
 	import Chat from './NoteEditor/Chat.svelte';
 
-	// import AccessControlModal from '$lib/components/workspace/common/AccessControlModal.svelte'; - Removed in notes-only app
+	import AccessControlModal from '$lib/components/workspace/common/AccessControlModal.svelte';
 
 	async function loadLocale(locales) {
 		for (const locale of locales) {
@@ -65,9 +68,8 @@
 	import RichTextInput from '../common/RichTextInput.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import MicSolid from '../icons/MicSolid.svelte';
-	// import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte'; - Removed in notes-only app
+	import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import MenuLines from '../icons/MenuLines.svelte';
 	import ChatBubbleOval from '../icons/ChatBubbleOval.svelte';
 
 	import Calendar from '../icons/Calendar.svelte';
@@ -75,7 +77,7 @@
 
 	import Image from '../common/Image.svelte';
 	import FileItem from '../common/FileItem.svelte';
-	// import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte'; - Removed in notes-only app
+	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
 	import RecordMenu from './RecordMenu.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -85,7 +87,7 @@
 	import Bars3BottomLeft from '../icons/Bars3BottomLeft.svelte';
 	import ArrowUturnLeft from '../icons/ArrowUturnLeft.svelte';
 	import ArrowUturnRight from '../icons/ArrowUturnRight.svelte';
-	import Sidebar from '../common/Sidebar.svelte';
+	import Sidebar from '../icons/Sidebar.svelte';
 	import ArrowRight from '../icons/ArrowRight.svelte';
 	import Cog6 from '../icons/Cog6.svelte';
 	import AiMenu from './AIMenu.svelte';
@@ -132,6 +134,7 @@
 	let showDeleteConfirm = false;
 	let showAccessControlModal = false;
 
+	let ignoreBlur = false;
 	let titleInputFocused = false;
 	let titleGenerating = false;
 
@@ -149,7 +152,6 @@
 		loading = true;
 		const res = await getNoteById(localStorage.token, id).catch((error) => {
 			toast.error(`${error}`);
-			loading = false;
 			return null;
 		});
 
@@ -159,8 +161,7 @@
 			note = res;
 			files = res.data.files || [];
 		} else {
-			loading = false;
-			goto('/notes');
+			goto('/');
 			return;
 		}
 
@@ -291,25 +292,9 @@ ${content}
 	};
 
 	async function enhanceNoteHandler() {
-		console.log('Enhance note handler called');
-		console.log('Selected model:', selectedModelId);
-		console.log('Available models:', $models);
-		
-		// Check if user is authenticated
-		if (!localStorage.token) {
-			toast.error($i18n.t('You must be logged in to enhance notes'));
+		if (selectedModelId === '') {
+			toast.error($i18n.t('Please select a model.'));
 			return;
-		}
-		
-		if (!selectedModelId || selectedModelId === '') {
-			// Try to auto-select a model
-			if ($models && $models.length > 0) {
-				selectedModelId = $models[0].id;
-				console.log('Auto-selected model:', selectedModelId);
-			} else {
-				toast.error($i18n.t('No models available. Please configure a model in settings.'));
-				return;
-			}
 		}
 
 		const model = $models
@@ -318,7 +303,6 @@ ${content}
 
 		if (!model) {
 			selectedModelId = '';
-			toast.error($i18n.t('Selected model not found or not accessible'));
 			return;
 		}
 
@@ -326,41 +310,8 @@ ${content}
 		await enhanceCompletionHandler(model);
 		editing = false;
 
-		// Aguardar um pouco para garantir que o editor processou o conteúdo
-		await tick();
-		
-		// Não precisamos chamar onEdited() aqui pois já estamos atualizando o editor
-		// dentro de enhanceCompletionHandler
+		onEdited();
 		versionIdx = null;
-
-		// Gerar título automaticamente após embelezar a nota
-		// Aguardar um pouco para garantir que o conteúdo foi atualizado
-		await tick();
-		
-		// Aguardar um pouco mais para garantir que o conteúdo embelezado foi processado
-		await new Promise(resolve => setTimeout(resolve, 500));
-		
-		try {
-			// Verificar se ainda temos um modelo válido selecionado
-			if (selectedModelId && selectedModelId !== '') {
-				// Garantir que o modelo ainda é válido
-				const currentModel = $models
-					.filter((model) => model.id === selectedModelId && !(model?.info?.meta?.hidden ?? false))
-					.find((model) => model.id === selectedModelId);
-				
-				if (currentModel) {
-					await generateTitleHandler();
-					toast.success($i18n.t('Note enhanced and title generated successfully!'));
-				} else {
-					toast.success($i18n.t('Note enhanced successfully!'));
-				}
-			} else {
-				toast.success($i18n.t('Note enhanced successfully!'));
-			}
-		} catch (error) {
-			console.error('Error generating title after enhance:', error);
-			toast.success($i18n.t('Note enhanced successfully!'));
-		}
 	}
 
 	const stopResponseHandler = async () => {
@@ -714,14 +665,6 @@ ${content}
 	};
 
 	const enhanceCompletionHandler = async (model) => {
-		console.log('Starting enhanceCompletionHandler with model:', model);
-		
-		if (!model || !model.id) {
-			console.error('Invalid model provided to enhanceCompletionHandler');
-			toast.error($i18n.t('Invalid model selected'));
-			return;
-		}
-		
 		stopResponseFlag = false;
 		let enhancedContent = {
 			json: null,
@@ -729,145 +672,14 @@ ${content}
 			md: ''
 		};
 
-		// Extract URLs from the note content
-		let extractedContext = '';
-		
-		try {
-			// Show loading toast
-			const loadingToast = toast.loading($i18n.t('Extracting content from URLs...'));
-			
-			// Check for YouTube URLs in the note
-			try {
-				console.log('Extracting YouTube URLs from:', note.data.content.md);
-				const youtubeResult = await extractYoutubeUrls(localStorage.token, note.data.content.md);
-				console.log('YouTube extraction result:', youtubeResult);
-				
-				if (youtubeResult?.youtube_urls && youtubeResult.youtube_urls.length > 0) {
-					for (const urlData of youtubeResult.youtube_urls) {
-						if (urlData.content) {
-							extractedContext += `\n\nYouTube Video (${urlData.url}):\n${urlData.content}\n`;
-						} else if (urlData.error) {
-							console.warn(`YouTube extraction failed for ${urlData.url}:`, urlData.error);
-						}
-					}
-				}
-			} catch (ytError) {
-				console.error('YouTube extraction error:', ytError);
-				if (ytError.message?.includes('404')) {
-					console.warn('YouTube extraction API not available');
-				}
-			}
-			
-			// Check for Instagram URLs in the note
-			try {
-				const instagramResult = await extractInstagramUrls(localStorage.token, note.data.content.md);
-				if (instagramResult?.instagram_urls && instagramResult.instagram_urls.length > 0) {
-					for (const urlData of instagramResult.instagram_urls) {
-						if (urlData.content) {
-							extractedContext += `\n\nInstagram Reel (${urlData.url}):\n`;
-							if (urlData.author) {
-								extractedContext += `Autor: @${urlData.author}\n`;
-							}
-							extractedContext += `${urlData.content}\n`;
-						} else if (urlData.error) {
-							console.warn(`Instagram extraction failed for ${urlData.url}:`, urlData.error);
-						}
-					}
-				}
-			} catch (igError) {
-				console.error('Instagram extraction error:', igError);
-			}
-			
-			// Check for other web URLs
-			const urlPattern = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
-			const urls = note.data.content.md.match(urlPattern) || [];
-			const nonYoutubeUrls = urls.filter(url => 
-				!url.includes('youtube.com') && 
-				!url.includes('youtu.be') &&
-				!url.includes('instagram.com') &&
-				!url.includes('instagr.am')
-			);
-			
-			for (const url of nonYoutubeUrls) {
-				try {
-					console.log(`Processing web URL: ${url}`);
-					const webResult = await processWebUrl(localStorage.token, url);
-					console.log('Web extraction result:', webResult);
-					
-					// Check for content in different possible locations
-					const content = webResult?.file?.data?.content || webResult?.content;
-					if (content) {
-						extractedContext += `\n\nWeb Content (${url}):\n${content}\n`;
-						console.log(`Web content extracted from ${url}, length: ${content.length}`);
-					} else {
-						console.warn(`No content found for ${url}`);
-					}
-				} catch (webErr) {
-					console.error(`Web extraction failed for ${url}:`, webErr);
-				}
-			}
-			
-			// Dismiss loading toast
-			toast.dismiss(loadingToast);
-			
-			if (extractedContext) {
-				toast.success($i18n.t('Content extracted successfully'));
-			}
-		} catch (err) {
-			console.error('Error during URL extraction:', err);
-		}
+		const systemPrompt = `Enhance existing notes using additional context provided from audio transcription or uploaded file content in the content's primary language. Your task is to make the notes more useful and comprehensive by incorporating relevant information from the provided context.
 
-		const systemPrompt = `Você é um assistente especializado em criar notas detalhadas e bem estruturadas. Sua tarefa é aprimorar as notas existentes incorporando APENAS as informações REAIS do contexto fornecido.
+Input will be provided within <notes> and <context> XML tags, providing a structure for the existing notes and context respectively.
 
-# REGRAS CRÍTICAS:
+# Output Format
 
-1. **USE APENAS O CONTEÚDO REAL FORNECIDO** - NUNCA invente, simule ou crie informações fictícias
-2. **Se não houver contexto extraído**, apenas formate melhor as notas existentes
-3. **PRESERVE TODOS OS LINKS**: Mantenha TODOS os links (URLs) exatamente como estão no formato markdown [texto](url)
-4. **Base-se EXCLUSIVAMENTE** no conteúdo fornecido entre as tags <context></context>
-
-# Instruções de Formatação:
-
-1. **Mantenha e expanda** o conteúdo original das notas usando APENAS informações reais do contexto
-2. **Estruture o conteúdo** usando markdown apropriado:
-   - Use # ## ### para hierarquia de títulos
-   - Use **negrito** para conceitos importantes
-   - Use listas numeradas ou com marcadores quando apropriado
-   - Use > para citações diretas do conteúdo extraído
-   - **IMPORTANTE**: Todos os links devem ser mantidos no formato [texto do link](URL completa)
-
-3. **Para vídeos do YouTube com transcrição**, organize:
-   - Título e link original
-   - Resumo baseado NA TRANSCRIÇÃO REAL
-   - Pontos principais MENCIONADOS NA TRANSCRIÇÃO
-   - **Mantenha o link do YouTube** no formato [título](URL)
-
-4. **Para conteúdo web extraído**, organize:
-   - Informações REAIS extraídas do site
-   - Dados e fatos PRESENTES NO CONTEÚDO
-   - **Preserve o link original** no formato [título](URL)
-
-# PROIBIDO:
-
-- NUNCA invente informações que não estão no contexto
-- NUNCA adicione dados fictícios ou exemplos genéricos
-- NUNCA simule conteúdo se a extração falhar
-- Se não houver conteúdo extraído para uma URL, apenas mantenha o link original
-
-# Formato de Saída:
-
-Retorne APENAS o markdown formatado das notas aprimoradas com informações REAIS. TODOS os links devem estar preservados.`;
-
-		const contextContent = 
-			(files && files.length > 0
-				? files.map((file) => `${file.name}: ${file?.file?.data?.content ?? 'Could not extract content'}\n`).join('')
-				: '') + extractedContext;
-
-		// Log the actual context being sent
-		console.log('Context content being sent to model:');
-		console.log('Original notes:', note.data.content.md);
-		console.log('Extracted context:', extractedContext || 'No context extracted');
-		console.log('Total context length:', contextContent.length);
+Provide the enhanced notes in markdown format. Use markdown syntax for headings, lists, task lists ([ ]) where tasks or checklists are strongly implied, and emphasis to improve clarity and presentation. Ensure that all integrated content from the context is accurately reflected. Return only the markdown formatted note.
+`;
 
 		const [res, controller] = await chatCompletion(
 			localStorage.token,
@@ -883,7 +695,9 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 						role: 'user',
 						content:
 							`<notes>${note.data.content.md}</notes>` +
-							(contextContent ? `\n<context>${contextContent}</context>` : '')
+							(files && files.length > 0
+								? `\n<context>${files.map((file) => `${file.name}: ${file?.file?.data?.content ?? 'Could not extract content'}\n`).join('')}</context>`
+								: '')
 					}
 				]
 			},
@@ -932,8 +746,7 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 
 										note.data.content.md = enhancedContent.md;
 										note.data.content.html = enhancedContent.html;
-										// Não atualizar o JSON durante o streaming
-										// Vamos deixar o editor processar tudo no final
+										note.data.content.json = null;
 
 										scrollToBottom();
 									}
@@ -945,59 +758,9 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 					console.log(error);
 				}
 			}
-		} else if (res) {
-			// Handle error response
-			streaming = false;
-			editing = false;
-			
-			let errorMessage = 'Failed to enhance note';
-			try {
-				const errorData = await res.json();
-				errorMessage = errorData.detail || errorMessage;
-				
-				// Check for specific error types
-				if (res.status === 401) {
-					errorMessage = 'Authentication failed. Please log in again.';
-				} else if (res.status === 400 && errorMessage.includes('Model not found')) {
-					errorMessage = 'Selected model not found. Please select a different model.';
-				} else if (res.status === 403) {
-					errorMessage = 'You do not have access to the selected model.';
-				}
-			} catch (e) {
-				console.error('Error parsing error response:', e);
-			}
-			
-			toast.error(errorMessage);
-			console.error('Enhancement failed:', res.status, errorMessage);
-			return;
 		}
 
 		streaming = false;
-		
-		// Forçar o editor a reprocessar o conteúdo para gerar o JSON correto com links funcionais
-		if (editor && note.data.content.html) {
-			console.log('Enhanced content MD:', note.data.content.md);
-			console.log('Enhanced content HTML:', note.data.content.html);
-			
-			// Pequeno delay para garantir que o streaming terminou completamente
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
-			// Definir o JSON como null para forçar o RichTextInput a processar o HTML
-			note.data.content.json = null;
-			
-			// Aguardar o próximo ciclo de renderização
-			await tick();
-			
-			// Aguardar mais um pouco para o editor processar
-			await new Promise(resolve => setTimeout(resolve, 200));
-			
-			// Verificar se o editor processou corretamente
-			if (editor.getJSON) {
-				const newJson = editor.getJSON();
-				console.log('Editor JSON after enhance:', newJson);
-				note.data.content.json = newJson;
-			}
-		}
 	};
 
 	const onDragOver = (e) => {
@@ -1145,17 +908,17 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 </svelte:head>
 
 {#if note}
-	<!-- <AccessControlModal
+	<AccessControlModal
 		bind:show={showAccessControlModal}
 		bind:accessControl={note.access_control}
 		accessRoles={['read', 'write']}
 		onChange={() => {
 			changeDebounceHandler();
 		}}
-	/> - Removed in notes-only app -->
+	/>
 {/if}
 
-<!-- <FilesOverlay show={dragged} /> - Removed in notes-only app -->
+<FilesOverlay show={dragged} />
 
 <DeleteConfirmDialog
 	bind:show={showDeleteConfirm}
@@ -1183,47 +946,29 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 				<div class=" w-full flex flex-col {loading ? 'opacity-20' : ''}">
 					<div class="shrink-0 w-full flex justify-between items-center px-3.5 mb-1.5">
 						<div class="w-full flex items-center">
-							<div
-								class="{$showSidebar
-									? 'md:hidden pl-0.5'
-									: ''} flex flex-none items-center pr-1 -translate-x-1"
-							>
-								<button
-									id="sidebar-toggle-button"
-									class="cursor-pointer p-1.5 flex rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition"
-									on:click={() => {
-										showSidebar.set(!$showSidebar);
-									}}
-									aria-label="Toggle Sidebar"
+							{#if $mobile}
+								<div
+									class="{$showSidebar
+										? 'md:hidden pl-0.5'
+										: ''} flex flex-none items-center pr-1 -translate-x-1"
 								>
-									<div class=" m-auto self-center">
-										<MenuLines />
-									</div>
-								</button>
-							</div>
-
-							<button
-								class="flex-none p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-850 transition mr-1"
-								on:click={() => {
-									goto('/notes');
-								}}
-								title={$i18n.t('Back to Notes')}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="2"
-									stroke="currentColor"
-									class="size-5"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
-									/>
-								</svg>
-							</button>
+									<Tooltip
+										content={$showSidebar ? $i18n.t('Close Sidebar') : $i18n.t('Open Sidebar')}
+									>
+										<button
+											id="sidebar-toggle-button"
+											class=" cursor-pointer flex rounded-lg hover:bg-gray-100 dark:hover:bg-gray-850 transition cursor-"
+											on:click={() => {
+												showSidebar.set(!$showSidebar);
+											}}
+										>
+											<div class=" self-center p-1.5">
+												<Sidebar />
+											</div>
+										</button>
+									</Tooltip>
+								</div>
+							{/if}
 
 							<input
 								class="w-full text-2xl font-medium bg-transparent outline-hidden"
@@ -1239,7 +984,8 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 								}}
 								on:blur={(e) => {
 									// check if target is generate button
-									if (e.relatedTarget?.id === 'generate-title-button') {
+									if (ignoreBlur) {
+										ignoreBlur = false;
 										return;
 									}
 
@@ -1256,6 +1002,11 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 										<button
 											class=" self-center dark:hover:text-white transition"
 											id="generate-title-button"
+											disabled={(note?.user_id !== $user?.id && $user?.role !== 'admin') ||
+												titleGenerating}
+											on:mouseenter={() => {
+												ignoreBlur = true;
+											}}
 											on:click={(e) => {
 												e.preventDefault();
 												e.stopImmediatePropagation();
@@ -1471,7 +1222,6 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 							user={$user}
 							link={true}
 							image={true}
-							youtube={true}
 							{files}
 							placeholder={$i18n.t('Write something...')}
 							editable={versionIdx === null && !editing}
@@ -1562,149 +1312,116 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 		<div class="absolute z-20 bottom-0 right-0 p-3.5 max-w-full w-full flex">
 			<div class="flex gap-1 w-full min-w-full justify-between">
 				{#if recording}
-					<!-- VoiceRecording component removed in notes-only app -->
 					<div class="flex-1 w-full">
-						<div class="p-4 bg-gray-100 dark:bg-gray-800 rounded text-center">
-							Voice recording feature not available in notes-only mode
-							<button 
-								class="ml-2 px-2 py-1 bg-red-500 text-white rounded text-sm"
-								on:click={() => {
-									recording = false;
-									displayMediaRecord = false;
-								}}
-							>
-								Cancel
-							</button>
-						</div>
+						<VoiceRecording
+							bind:recording
+							className="p-1 w-full max-w-full"
+							transcribe={false}
+							displayMedia={displayMediaRecord}
+							echoCancellation={false}
+							noiseSuppression={false}
+							onCancel={() => {
+								recording = false;
+								displayMediaRecord = false;
+							}}
+							onConfirm={(data) => {
+								if (data?.file) {
+									uploadFileHandler(data?.file);
+								}
+
+								recording = false;
+								displayMediaRecord = false;
+							}}
+						/>
 					</div>
 				{:else}
-					<div></div>
-					<div class="flex gap-1">
-						<RecordMenu
-							onRecord={async () => {
-								displayMediaRecord = false;
+					<RecordMenu
+						onRecord={async () => {
+							displayMediaRecord = false;
 
-								try {
-									let stream = await navigator.mediaDevices
-										.getUserMedia({ audio: true })
-										.catch(function (err) {
-											toast.error(
-												$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
-													error: err
-												})
-											);
-											return null;
-										});
+							try {
+								let stream = await navigator.mediaDevices
+									.getUserMedia({ audio: true })
+									.catch(function (err) {
+										toast.error(
+											$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
+												error: err
+											})
+										);
+										return null;
+									});
 
-									if (stream) {
-										recording = true;
-										const tracks = stream.getTracks();
-										tracks.forEach((track) => track.stop());
-									}
-									stream = null;
-								} catch {
-									toast.error($i18n.t('Permission denied when accessing microphone'));
+								if (stream) {
+									recording = true;
+									const tracks = stream.getTracks();
+									tracks.forEach((track) => track.stop());
 								}
-							}}
-							onCaptureAudio={async () => {
-								displayMediaRecord = true;
+								stream = null;
+							} catch {
+								toast.error($i18n.t('Permission denied when accessing microphone'));
+							}
+						}}
+						onCaptureAudio={async () => {
+							displayMediaRecord = true;
 
-								recording = true;
-							}}
-							onUpload={async () => {
-								const input = document.createElement('input');
-								input.type = 'file';
-								input.accept = 'audio/*';
-								input.multiple = false;
-								input.click();
+							recording = true;
+						}}
+						onUpload={async () => {
+							const input = document.createElement('input');
+							input.type = 'file';
+							input.accept = 'audio/*';
+							input.multiple = false;
+							input.click();
 
-								input.onchange = async (e) => {
-									const files = e.target.files;
+							input.onchange = async (e) => {
+								const files = e.target.files;
 
-									if (files && files.length > 0) {
-										await uploadFileHandler(files[0]);
-									}
-								};
-							}}
-						>
-							<Tooltip content={$i18n.t('Record')} placement="top">
-								<div
-									class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
+								if (files && files.length > 0) {
+									await uploadFileHandler(files[0]);
+								}
+							};
+						}}
+					>
+						<Tooltip content={$i18n.t('Record')} placement="top">
+							<div
+								class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
+							>
+								<MicSolid className="size-4.5" />
+							</div>
+						</Tooltip>
+					</RecordMenu>
+
+					<div
+						class="cursor-pointer flex gap-0.5 rounded-full border border-gray-50 dark:border-gray-850 dark:bg-gray-850 transition shadow-xl"
+					>
+						<Tooltip content={$i18n.t('AI')} placement="top">
+							{#if editing}
+								<button
+									class="p-2 flex justify-center items-center hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition shrink-0"
+									on:click={() => {
+										stopResponseHandler();
+									}}
+									type="button"
 								>
-									<MicSolid className="size-4.5" />
-								</div>
-							</Tooltip>
-						</RecordMenu>
-						<div
-							class="cursor-pointer flex gap-0.5 rounded-full border border-gray-50 dark:border-gray-850 dark:bg-gray-850 transition shadow-xl"
-						>
-							<Tooltip content={$i18n.t('AI')} placement="top">
-								{#if editing}
-									<button
-										class="p-2 flex justify-center items-center hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition shrink-0"
-										on:click={() => {
-											stopResponseHandler();
-										}}
-										type="button"
-									>
-										<Spinner className="size-5" />
-									</button>
-								{:else}
-									<button
-										type="button"
-										on:click={() => {
-											enhanceNoteHandler();
-										}}
+									<Spinner className="size-5" />
+								</button>
+							{:else}
+								<AiMenu
+									onEdit={() => {
+										enhanceNoteHandler();
+									}}
+									onChat={() => {
+										showPanel = true;
+										selectedPanel = 'chat';
+									}}
+								>
+									<div
 										class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
 									>
 										<SparklesSolid />
-									</button>
-								{/if}
-							</Tooltip>
-						</div>
-
-						<Tooltip content={$i18n.t('Create New Note')} placement="top">
-							<button
-								class="cursor-pointer p-2.5 flex rounded-full border border-gray-50 bg-white dark:border-none dark:bg-gray-850 hover:bg-gray-50 dark:hover:bg-gray-800 transition shadow-xl"
-								aria-label="Create New Note"
-								on:click={async () => {
-									const { createNewNote } = await import('$lib/apis/notes');
-									const dayjs = (await import('$lib/dayjs')).default;
-									
-									const res = await createNewNote(localStorage.token, {
-										title: dayjs().format('YYYY-MM-DD'),
-										data: {
-											content: {
-												json: null,
-												html: '',
-												md: ''
-											}
-										},
-										meta: null,
-										access_control: {},
-										folder_id: null
-									});
-									
-									if (res) {
-										window.location.href = `/notes/${res.id}`;
-									}
-								}}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="2"
-									stroke="currentColor"
-									class="size-4.5"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M12 4.5v15m7.5-7.5h-15"
-									/>
-								</svg>
-							</button>
+									</div>
+								</AiMenu>
+							{/if}
 						</Tooltip>
 					</div>
 				{/if}
@@ -1722,6 +1439,7 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 				bind:streaming
 				bind:stopResponseFlag
 				{editor}
+				{inputElement}
 				{selectedContent}
 				{files}
 				onInsert={insertHandler}

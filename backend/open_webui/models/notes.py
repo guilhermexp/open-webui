@@ -29,7 +29,6 @@ class Note(Base):
     meta = Column(JSON, nullable=True)
 
     access_control = Column(JSON, nullable=True)
-    folder_id = Column(Text, nullable=True)
 
     created_at = Column(BigInteger)
     updated_at = Column(BigInteger)
@@ -46,7 +45,6 @@ class NoteModel(BaseModel):
     meta: Optional[dict] = None
 
     access_control: Optional[dict] = None
-    folder_id: Optional[str] = None
 
     created_at: int  # timestamp in epoch
     updated_at: int  # timestamp in epoch
@@ -62,7 +60,6 @@ class NoteForm(BaseModel):
     data: Optional[dict] = None
     meta: Optional[dict] = None
     access_control: Optional[dict] = None
-    folder_id: Optional[str] = None
 
 
 class NoteUpdateForm(BaseModel):
@@ -70,7 +67,6 @@ class NoteUpdateForm(BaseModel):
     data: Optional[dict] = None
     meta: Optional[dict] = None
     access_control: Optional[dict] = None
-    folder_id: Optional[str] = None
 
 
 class NoteUserResponse(NoteModel):
@@ -140,9 +136,6 @@ class NoteTable:
 
             if "access_control" in form_data:
                 note.access_control = form_data["access_control"]
-            
-            if "folder_id" in form_data:
-                note.folder_id = form_data["folder_id"]
 
             note.updated_at = int(time.time_ns())
 
@@ -154,39 +147,6 @@ class NoteTable:
             db.query(Note).filter(Note.id == id).delete()
             db.commit()
             return True
-    
-    def get_notes_by_user_id_and_folder_id(
-        self, user_id: str, folder_id: Optional[str], permission: str = "write"
-    ) -> list[NoteModel]:
-        notes = self.get_notes_by_user_id(user_id, permission)
-        return [
-            note
-            for note in notes
-            if note.folder_id == folder_id
-        ]
-    
-    def delete_notes_by_user_id_and_folder_id(self, user_id: str, folder_id: str):
-        with get_db() as db:
-            db.query(Note).filter(
-                Note.user_id == user_id,
-                Note.folder_id == folder_id
-            ).delete()
-            db.commit()
-            return True
-    
-    def update_note_folder_id_by_id(
-        self, id: str, folder_id: Optional[str]
-    ) -> Optional[NoteModel]:
-        with get_db() as db:
-            note = db.query(Note).filter(Note.id == id).first()
-            if not note:
-                return None
-            
-            note.folder_id = folder_id
-            note.updated_at = int(time.time_ns())
-            
-            db.commit()
-            return NoteModel.model_validate(note) if note else None
 
 
 Notes = NoteTable()

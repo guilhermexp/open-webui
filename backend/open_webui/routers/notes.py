@@ -31,7 +31,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[NoteUserResponse])
-async def get_notes(request: Request, folder_id: Optional[str] = None, user=Depends(get_verified_user)):
+async def get_notes(request: Request, user=Depends(get_verified_user)):
 
     if user.role != "admin" and not has_permission(
         user.id, "features.notes", request.app.state.config.USER_PERMISSIONS
@@ -41,26 +41,15 @@ async def get_notes(request: Request, folder_id: Optional[str] = None, user=Depe
             detail=ERROR_MESSAGES.UNAUTHORIZED,
         )
 
-    if folder_id is not None:
-        notes = [
-            NoteUserResponse(
-                **{
-                    **note.model_dump(),
-                    "user": UserResponse(**Users.get_user_by_id(note.user_id).model_dump()),
-                }
-            )
-            for note in Notes.get_notes_by_user_id_and_folder_id(user.id, folder_id, "write")
-        ]
-    else:
-        notes = [
-            NoteUserResponse(
-                **{
-                    **note.model_dump(),
-                    "user": UserResponse(**Users.get_user_by_id(note.user_id).model_dump()),
-                }
-            )
-            for note in Notes.get_notes_by_user_id(user.id, "write")
-        ]
+    notes = [
+        NoteUserResponse(
+            **{
+                **note.model_dump(),
+                "user": UserResponse(**Users.get_user_by_id(note.user_id).model_dump()),
+            }
+        )
+        for note in Notes.get_notes_by_user_id(user.id, "write")
+    ]
 
     return notes
 
@@ -190,53 +179,6 @@ async def update_note_by_id(
             to=f"note:{note.id}",
         )
 
-        return note
-    except Exception as e:
-        log.exception(e)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.DEFAULT()
-        )
-
-
-############################
-# UpdateNoteFolderById
-############################
-
-
-@router.post("/{id}/update/folder", response_model=Optional[NoteModel])
-async def update_note_folder_by_id(
-    request: Request, id: str, folder_data: dict, user=Depends(get_verified_user)
-):
-    if user.role != "admin" and not has_permission(
-        user.id, "features.notes", request.app.state.config.USER_PERMISSIONS
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ERROR_MESSAGES.UNAUTHORIZED,
-        )
-
-    note = Notes.get_note_by_id(id)
-    if not note:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ERROR_MESSAGES.NOT_FOUND
-        )
-
-    if user.role != "admin" and (
-        user.id != note.user_id
-        and not has_access(user.id, type="write", access_control=note.access_control)
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.DEFAULT()
-        )
-
-    try:
-        folder_id = folder_data.get("folder_id")
-        note = Notes.update_note_folder_id_by_id(id, folder_id)
-        await sio.emit(
-            "note-events",
-            note.model_dump(),
-            to=f"note:{note.id}",
-        )
         return note
     except Exception as e:
         log.exception(e)
