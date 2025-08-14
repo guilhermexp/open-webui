@@ -35,8 +35,8 @@
 	import ChevronUp from '../icons/ChevronUp.svelte';
 	import ChevronDown from '../icons/ChevronDown.svelte';
 	import Spinner from './Spinner.svelte';
-	import CodeBlock from '../chat/Messages/CodeBlock.svelte';
-	import Markdown from '../chat/Messages/Markdown.svelte';
+	// import CodeBlock from '../chat/Messages/CodeBlock.svelte'; - Removed in notes-only app
+	// import Markdown from '../chat/Messages/Markdown.svelte'; - Removed in notes-only app
 	import Image from './Image.svelte';
 
 	export let open = false;
@@ -134,19 +134,17 @@
 						{/if}
 					{:else if attributes?.type === 'tool_calls'}
 						{#if attributes?.done === 'true'}
-							<Markdown
-								id={`${collapsibleId}-tool-calls-${attributes?.id}`}
-								content={$i18n.t('View Result from **{{NAME}}**', {
+							<div id={`${collapsibleId}-tool-calls-${attributes?.id}`}>
+								{$i18n.t('View Result from {{NAME}}', {
 									NAME: attributes.name
 								})}
-							/>
+							</div>
 						{:else}
-							<Markdown
-								id={`${collapsibleId}-tool-calls-${attributes?.id}-executing`}
-								content={$i18n.t('Executing **{{NAME}}**...', {
+							<div id={`${collapsibleId}-tool-calls-${attributes?.id}-executing`}>
+								{$i18n.t('Executing {{NAME}}...', {
 									NAME: attributes.name
 								})}
-							/>
+							</div>
 						{/if}
 					{:else}
 						{title}
@@ -214,20 +212,20 @@
 				<div transition:slide={{ duration: 300, easing: quintOut, axis: 'y' }}>
 					{#if attributes?.type === 'tool_calls'}
 						{#if attributes?.done === 'true'}
-							<Markdown
+							<pre 
 								id={`${collapsibleId}-tool-calls-${attributes?.id}-result`}
-								content={`> \`\`\`json
-> ${formatJSONString(args)}
-> ${formatJSONString(result)}
-> \`\`\``}
-							/>
+								class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm overflow-auto"
+							>
+								<code>{formatJSONString(args)}</code>
+								<code>{formatJSONString(result)}</code>
+							</pre>
 						{:else}
-							<Markdown
+							<pre 
 								id={`${collapsibleId}-tool-calls-${attributes?.id}-result`}
-								content={`> \`\`\`json
-> ${formatJSONString(args)}
-> \`\`\``}
-							/>
+								class="bg-gray-100 dark:bg-gray-800 p-2 rounded text-sm overflow-auto"
+							>
+								<code>{formatJSONString(args)}</code>
+							</pre>
 						{/if}
 					{:else}
 						<slot name="content" />

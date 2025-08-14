@@ -44,7 +44,7 @@
 	import Controls from './NoteEditor/Controls.svelte';
 	import Chat from './NoteEditor/Chat.svelte';
 
-	import AccessControlModal from '$lib/components/workspace/common/AccessControlModal.svelte';
+	// import AccessControlModal from '$lib/components/workspace/common/AccessControlModal.svelte'; - Removed in notes-only app
 
 	async function loadLocale(locales) {
 		for (const locale of locales) {
@@ -65,7 +65,7 @@
 	import RichTextInput from '../common/RichTextInput.svelte';
 	import Spinner from '../common/Spinner.svelte';
 	import MicSolid from '../icons/MicSolid.svelte';
-	import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte';
+	// import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte'; - Removed in notes-only app
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import MenuLines from '../icons/MenuLines.svelte';
 	import ChatBubbleOval from '../icons/ChatBubbleOval.svelte';
@@ -75,7 +75,7 @@
 
 	import Image from '../common/Image.svelte';
 	import FileItem from '../common/FileItem.svelte';
-	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
+	// import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte'; - Removed in notes-only app
 	import RecordMenu from './RecordMenu.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
@@ -1145,17 +1145,17 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 </svelte:head>
 
 {#if note}
-	<AccessControlModal
+	<!-- <AccessControlModal
 		bind:show={showAccessControlModal}
 		bind:accessControl={note.access_control}
 		accessRoles={['read', 'write']}
 		onChange={() => {
 			changeDebounceHandler();
 		}}
-	/>
+	/> - Removed in notes-only app -->
 {/if}
 
-<FilesOverlay show={dragged} />
+<!-- <FilesOverlay show={dragged} /> - Removed in notes-only app -->
 
 <DeleteConfirmDialog
 	bind:show={showDeleteConfirm}
@@ -1562,27 +1562,20 @@ Retorne APENAS o markdown formatado das notas aprimoradas com informações REAI
 		<div class="absolute z-20 bottom-0 right-0 p-3.5 max-w-full w-full flex">
 			<div class="flex gap-1 w-full min-w-full justify-between">
 				{#if recording}
+					<!-- VoiceRecording component removed in notes-only app -->
 					<div class="flex-1 w-full">
-						<VoiceRecording
-							bind:recording
-							className="p-1 w-full max-w-full"
-							transcribe={false}
-							displayMedia={displayMediaRecord}
-							echoCancellation={false}
-							noiseSuppression={false}
-							onCancel={() => {
-								recording = false;
-								displayMediaRecord = false;
-							}}
-							onConfirm={(data) => {
-								if (data?.file) {
-									uploadFileHandler(data?.file);
-								}
-
-								recording = false;
-								displayMediaRecord = false;
-							}}
-						/>
+						<div class="p-4 bg-gray-100 dark:bg-gray-800 rounded text-center">
+							Voice recording feature not available in notes-only mode
+							<button 
+								class="ml-2 px-2 py-1 bg-red-500 text-white rounded text-sm"
+								on:click={() => {
+									recording = false;
+									displayMediaRecord = false;
+								}}
+							>
+								Cancel
+							</button>
+						</div>
 					</div>
 				{:else}
 					<div></div>

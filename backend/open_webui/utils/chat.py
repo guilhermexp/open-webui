@@ -27,17 +27,17 @@ from open_webui.routers.openai import (
     generate_chat_completion as generate_openai_chat_completion,
 )
 
-from open_webui.routers.ollama import (
-    generate_chat_completion as generate_ollama_chat_completion,
-)
+# from open_webui.routers.ollama import (
+#     generate_chat_completion as generate_ollama_chat_completion,
+# ) - Ollama removed in notes-only app
 
-from open_webui.routers.pipelines import (
-    process_pipeline_inlet_filter,
-    process_pipeline_outlet_filter,
-)
+# from open_webui.routers.pipelines import (
+#     process_pipeline_inlet_filter,
+#     process_pipeline_outlet_filter,
+# ) - Pipelines removed in notes-only app
 
-from open_webui.models.functions import Functions
-from open_webui.models.models import Models
+# from open_webui.models.functions import Functions - Functions removed in notes-only app
+# from open_webui.models.models import Models - Models removed in notes-only app
 
 
 from open_webui.utils.plugin import (
@@ -259,12 +259,10 @@ async def generate_chat_completion(
         if model.get("owned_by") == "ollama":
             # Using /ollama/api/chat endpoint
             form_data = convert_payload_openai_to_ollama(form_data)
-            response = await generate_ollama_chat_completion(
-                request=request,
-                form_data=form_data,
-                user=user,
-                bypass_filter=bypass_filter,
-            )
+            # response = await generate_ollama_chat_completion( - Ollama removed in notes-only app
+            #     request=request,
+            #     form_data=form_data,
+            raise Exception("Ollama not available in notes-only app")
             if form_data.get("stream"):
                 response.headers["content-type"] = "text/event-stream"
                 return StreamingResponse(
@@ -304,10 +302,11 @@ async def chat_completed(request: Request, form_data: dict, user: Any):
 
     model = models[model_id]
 
-    try:
-        data = await process_pipeline_outlet_filter(request, data, user, models)
-    except Exception as e:
-        return Exception(f"Error: {e}")
+    # Pipeline processing removed in notes-only app
+    # try:
+    #     data = await process_pipeline_outlet_filter(request, data, user, models)
+    # except Exception as e:
+    #     return Exception(f"Error: {e}")
 
     metadata = {
         "chat_id": data["chat_id"],
@@ -327,12 +326,8 @@ async def chat_completed(request: Request, form_data: dict, user: Any):
     }
 
     try:
-        filter_functions = [
-            Functions.get_function_by_id(filter_id)
-            for filter_id in get_sorted_filter_ids(
-                request, model, metadata.get("filter_ids", [])
-            )
-        ]
+        # Functions removed in notes-only app
+        filter_functions = []
 
         result, _ = await process_filter_functions(
             request=request,
@@ -352,9 +347,10 @@ async def chat_action(request: Request, action_id: str, form_data: dict, user: A
     else:
         sub_action_id = None
 
-    action = Functions.get_function_by_id(action_id)
-    if not action:
-        raise Exception(f"Action not found: {action_id}")
+    # action = Functions.get_function_by_id(action_id) - Functions removed in notes-only app
+    # if not action:
+    #     raise Exception(f"Action not found: {action_id}")
+    raise Exception("Actions not available in notes-only app")
 
     if not request.app.state.MODELS:
         await get_all_models(request, user=user)
@@ -393,7 +389,8 @@ async def chat_action(request: Request, action_id: str, form_data: dict, user: A
     function_module, _, _ = get_function_module_from_cache(request, action_id)
 
     if hasattr(function_module, "valves") and hasattr(function_module, "Valves"):
-        valves = Functions.get_function_valves_by_id(action_id)
+        # valves = Functions.get_function_valves_by_id(action_id) - Functions removed in notes-only app
+        valves = {}
         function_module.valves = function_module.Valves(**(valves if valves else {}))
 
     if hasattr(function_module, "action"):
@@ -423,11 +420,8 @@ async def chat_action(request: Request, action_id: str, form_data: dict, user: A
 
                 try:
                     if hasattr(function_module, "UserValves"):
-                        __user__["valves"] = function_module.UserValves(
-                            **Functions.get_user_valves_by_id_and_user_id(
-                                action_id, user.id
-                            )
-                        )
+                        # Functions removed in notes-only app
+                        __user__["valves"] = function_module.UserValves()
                 except Exception as e:
                     log.exception(f"Failed to get user values: {e}")
 

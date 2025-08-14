@@ -22,13 +22,13 @@
 
 	import Tooltip from '../common/Tooltip.svelte';
 	import RichTextInput from '../common/RichTextInput.svelte';
-	import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte';
+	// import VoiceRecording from '../chat/MessageInput/VoiceRecording.svelte'; // Comentado - componente removido
 	import InputMenu from './MessageInput/InputMenu.svelte';
 	import { uploadFile } from '$lib/apis/files';
 	import { WEBUI_API_BASE_URL } from '$lib/constants';
 	import FileItem from '../common/FileItem.svelte';
 	import Image from '../common/Image.svelte';
-	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
+	// import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte'; // Comentado - componente removido
 	import Commands from '../chat/MessageInput/Commands.svelte';
 	import InputVariablesModal from '../chat/MessageInput/InputVariablesModal.svelte';
 
@@ -509,7 +509,7 @@
 	});
 </script>
 
-<FilesOverlay show={draggedOver} />
+<!-- <FilesOverlay show={draggedOver} /> -->
 
 {#if acceptFiles}
 	<input
@@ -600,31 +600,16 @@
 
 		<div class="">
 			{#if recording}
-				<VoiceRecording
-					bind:recording
-					onCancel={async () => {
-						recording = false;
-
-						await tick();
-
-						if (chatInputElement) {
-							chatInputElement.focus();
-						}
-					}}
-					onConfirm={async (data) => {
-						const { text, filename } = data;
-						recording = false;
-
-						await tick();
-						insertTextAtCursor(text);
-
-						await tick();
-
-						if (chatInputElement) {
-							chatInputElement.focus();
-						}
-					}}
-				/>
+				<!-- VoiceRecording component commented out - removed component -->
+				<div class="flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+					<p class="text-gray-600 dark:text-gray-400">Voice recording não disponível</p>
+					<button 
+						class="ml-4 px-3 py-1 bg-red-500 text-white rounded"
+						on:click={() => recording = false}
+					>
+						Cancelar
+					</button>
+				</div>
 			{:else}
 				<form
 					class="w-full flex gap-1.5"

@@ -3,8 +3,8 @@
 
 	const i18n = getContext('i18n');
 
-	import Skeleton from '$lib/components/chat/Messages/Skeleton.svelte';
-	import Markdown from '$lib/components/chat/Messages/Markdown.svelte';
+	// import Skeleton from '$lib/components/chat/Messages/Skeleton.svelte'; // Comentado - componente removido
+	// import Markdown from '$lib/components/chat/Messages/Markdown.svelte'; // Comentado - componente removido
 	import Pencil from '$lib/components/icons/Pencil.svelte';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
@@ -80,8 +80,9 @@
 		<!-- $i18n.t('an assistant') -->
 
 		{#if !(message?.done ?? true) && message?.content === ''}
-			<div class="">
-				<Skeleton size="sm" />
+			<div class="animate-pulse">
+				<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+				<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 			</div>
 		{:else if message?.edit === true}
 			<Textarea
@@ -95,8 +96,8 @@
 				}}
 			/>
 		{:else}
-			<div class=" markdown-prose-sm text-sm">
-				<Markdown id={`note-message-${idx}`} content={message.content} />
+			<div class=" markdown-prose-sm text-sm prose dark:prose-invert">
+				{@html message.content.replace(/\n/g, '<br>')}
 			</div>
 		{/if}
 	</div>

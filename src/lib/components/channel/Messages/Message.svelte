@@ -17,9 +17,9 @@
 
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
-	import Markdown from '$lib/components/chat/Messages/Markdown.svelte';
-	import ProfileImage from '$lib/components/chat/Messages/ProfileImage.svelte';
-	import Name from '$lib/components/chat/Messages/Name.svelte';
+	// import Markdown from '$lib/components/chat/Messages/Markdown.svelte'; // Comentado - componente removido
+	// import ProfileImage from '$lib/components/chat/Messages/ProfileImage.svelte'; // Comentado - componente removido
+	// import Name from '$lib/components/chat/Messages/Name.svelte'; // Comentado - componente removido
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
 	import Pencil from '$lib/components/icons/Pencil.svelte';
@@ -142,12 +142,14 @@
 			>
 				{#if showUserProfile}
 					<ProfilePreview user={message.user}>
-						<ProfileImage
+						<img
 							src={message.user?.profile_image_url ??
 								($i18n.language === 'dg-DG'
 									? `${WEBUI_BASE_URL}/doge.png`
 									: `${WEBUI_BASE_URL}/static/favicon.png`)}
-							className={'size-8 translate-y-1 ml-0.5'}
+							alt="Profile"
+							class="size-8 translate-y-1 ml-0.5 rounded-full object-cover"
+							draggable="false"
 						/>
 					</ProfilePreview>
 				{:else}
@@ -167,7 +169,7 @@
 
 			<div class="flex-auto w-0 pl-1">
 				{#if showUserProfile}
-					<Name>
+					<div class="flex items-end gap-2">
 						<div class=" self-end text-base shrink-0 font-medium truncate">
 							{message?.user?.name}
 						</div>
@@ -181,7 +183,7 @@
 								</Tooltip>
 							</div>
 						{/if}
-					</Name>
+					</div>
 				{/if}
 
 				{#if (message?.data?.files ?? []).length > 0}
@@ -251,11 +253,8 @@
 						</div>
 					</div>
 				{:else}
-					<div class=" min-w-full markdown-prose">
-						<Markdown
-							id={message.id}
-							content={message.content}
-						/>{#if message.created_at !== message.updated_at}<span class="text-gray-500 text-[10px]"
+					<div class=" min-w-full markdown-prose prose dark:prose-invert">
+						{@html message.content.replace(/\n/g, '<br>')}{#if message.created_at !== message.updated_at}<span class="text-gray-500 text-[10px]"
 								>(edited)</span
 							>{/if}
 					</div>

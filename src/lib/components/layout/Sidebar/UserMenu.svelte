@@ -9,14 +9,13 @@
 	import { getUsage } from '$lib/apis';
 	import { userSignOut } from '$lib/apis/auths';
 
-	import { showSettings, mobile, showSidebar, showShortcuts, user } from '$lib/stores';
+	import { showSettings, mobile, showSidebar, user } from '$lib/stores';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
 	import QuestionMarkCircle from '$lib/components/icons/QuestionMarkCircle.svelte';
 	import Map from '$lib/components/icons/Map.svelte';
 	import Keyboard from '$lib/components/icons/Keyboard.svelte';
-	import ShortcutsModal from '$lib/components/chat/ShortcutsModal.svelte';
 	import Settings from '$lib/components/icons/Settings.svelte';
 	import SignOut from '$lib/components/icons/SignOut.svelte';
 
@@ -47,7 +46,7 @@
 	}
 </script>
 
-<ShortcutsModal bind:show={$showShortcuts} />
+<!-- <ShortcutsModal bind:show={$showShortcuts} /> - Removed in notes-only app -->
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <DropdownMenu.Root
@@ -136,7 +135,7 @@
 					class="flex gap-2 items-center py-1.5 px-3 text-sm select-none w-full cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition"
 					id="chat-share-button"
 					on:click={() => {
-						showShortcuts.set(!$showShortcuts);
+						// showShortcuts.set(!$showShortcuts); - Removed in notes-only app
 						show = false;
 					}}
 				>

@@ -63,22 +63,13 @@ from open_webui.routers import (
     images,
     openai,
     retrieval,
-    tasks,
     auths,
-    chats,
     notes,
     note_folders,
-    folders,
     configs,
     files,
-    memories,
-    models,
-    knowledge,
-    prompts,
-    tools,
     users,
     utils,
-    mcp,
 )
 
 from open_webui.routers.retrieval import (
@@ -89,11 +80,7 @@ from open_webui.routers.retrieval import (
 )
 
 from open_webui.internal.db import Session, engine
-
-from open_webui.models.functions import Functions
-from open_webui.models.models import Models
 from open_webui.models.users import UserModel, Users
-from open_webui.models.chats import Chats
 
 from open_webui.config import (
     LICENSE_KEY,
@@ -431,7 +418,7 @@ from open_webui.utils.chat import (
     chat_action as chat_action_handler,
 )
 from open_webui.utils.embeddings import generate_embeddings
-from open_webui.utils.middleware import process_chat_payload, process_chat_response
+# from open_webui.utils.middleware import process_chat_payload, process_chat_response - Disabled for notes-only app
 from open_webui.utils.access_control import has_access
 
 from open_webui.utils.auth import (
@@ -458,7 +445,7 @@ from open_webui.utils.redis import get_sentinels_from_env
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
-    Functions.deactivate_all_functions()
+    # Functions.deactivate_all_functions() - Functions removed in notes-only app
 
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
@@ -1214,31 +1201,17 @@ app.mount("/ws", socket_app)
 app.include_router(openai.router, prefix="/openai", tags=["openai"])
 
 
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+# Essential APIs for notes-only app
 app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
-
 app.include_router(audio.router, prefix="/api/v1/audio", tags=["audio"])
 app.include_router(retrieval.router, prefix="/api/v1/retrieval", tags=["retrieval"])
-
 app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
-
 app.include_router(auths.router, prefix="/api/v1/auths", tags=["auths"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
-
-app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
+# Notes functionality
 app.include_router(notes.router, prefix="/api/v1/notes", tags=["notes"])
 app.include_router(note_folders.router, prefix="/api/v1/note-folders", tags=["note-folders"])
-
-
-app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
-app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["knowledge"])
-app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])
-app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
-app.include_router(mcp.router, prefix="/api/v1/mcp", tags=["mcp"])
-
-app.include_router(memories.router, prefix="/api/v1/memories", tags=["memories"])
-app.include_router(folders.router, prefix="/api/v1/folders", tags=["folders"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 
@@ -1281,12 +1254,8 @@ async def get_models(
                     filtered_models.append(model)
                 continue
 
-            model_info = Models.get_model_by_id(model["id"])
-            if model_info:
-                if user.id == model_info.user_id or has_access(
-                    user.id, type="read", access_control=model_info.access_control
-                ):
-                    filtered_models.append(model)
+            # Models removed in notes-only app - allow all models for now
+            filtered_models.append(model)
 
         return filtered_models
 
@@ -1389,7 +1358,7 @@ async def chat_completion(
                 raise Exception("Model not found")
 
             model = request.app.state.MODELS[model_id]
-            model_info = Models.get_model_by_id(model_id)
+            model_info = None  # Models removed in notes-only app
 
             # Check if user has access to the model
             if not BYPASS_MODEL_ACCESS_CONTROL and user.role == "user":
@@ -1432,21 +1401,21 @@ async def chat_completion(
         request.state.metadata = metadata
         form_data["metadata"] = metadata
 
-        form_data, metadata, events = await process_chat_payload(
-            request, form_data, user, metadata, model
-        )
+        # Middleware disabled for notes-only app
+        events = []
 
     except Exception as e:
         log.debug(f"Error processing chat payload: {e}")
         if metadata.get("chat_id") and metadata.get("message_id"):
-            # Update the chat message with the error
-            Chats.upsert_message_to_chat_by_id_and_message_id(
-                metadata["chat_id"],
-                metadata["message_id"],
-                {
-                    "error": {"content": str(e)},
-                },
-            )
+            # Update the chat message with the error - Chats removed in notes-only app
+            # Chats.upsert_message_to_chat_by_id_and_message_id(
+            #     metadata["chat_id"],
+            #     metadata["message_id"],
+            #     {
+            #         "error": {"content": str(e)},
+            #     },
+            # )
+            pass
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1456,20 +1425,20 @@ async def chat_completion(
     try:
         response = await chat_completion_handler(request, form_data, user)
 
-        return await process_chat_response(
-            request, response, form_data, user, metadata, model, events, tasks
-        )
+        # Middleware disabled for notes-only app
+        return response
     except Exception as e:
         log.debug(f"Error in chat completion: {e}")
         if metadata.get("chat_id") and metadata.get("message_id"):
-            # Update the chat message with the error
-            Chats.upsert_message_to_chat_by_id_and_message_id(
-                metadata["chat_id"],
-                metadata["message_id"],
-                {
-                    "error": {"content": str(e)},
-                },
-            )
+            # Update the chat message with the error - Chats removed in notes-only app
+            # Chats.upsert_message_to_chat_by_id_and_message_id(
+            #     metadata["chat_id"],
+            #     metadata["message_id"],
+            #     {
+            #         "error": {"content": str(e)},
+            #     },
+            # )
+            pass
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1540,9 +1509,9 @@ async def list_tasks_endpoint(request: Request, user=Depends(get_verified_user))
 async def list_tasks_by_chat_id_endpoint(
     request: Request, chat_id: str, user=Depends(get_verified_user)
 ):
-    chat = Chats.get_chat_by_id(chat_id)
-    if chat is None or chat.user_id != user.id:
-        return {"task_ids": []}
+    # chat = Chats.get_chat_by_id(chat_id) - Chats removed in notes-only app
+    # if chat is None or chat.user_id != user.id:
+    return {"task_ids": []}
 
     task_ids = await list_task_ids_by_item_id(request.app.state.redis, chat_id)
 

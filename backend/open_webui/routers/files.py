@@ -30,9 +30,7 @@ from open_webui.models.files import (
     FileModelResponse,
     Files,
 )
-from open_webui.models.knowledge import Knowledges
-
-from open_webui.routers.knowledge import get_knowledge, get_knowledge_list
+# Knowledge imports removed - feature not available in notes-only app
 from open_webui.routers.retrieval import ProcessFileForm, process_file
 from open_webui.routers.audio import transcribe
 from open_webui.storage.provider import Storage
@@ -63,18 +61,8 @@ def has_access_to_file(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
-    has_access = False
-    knowledge_base_id = file.meta.get("collection_name") if file.meta else None
-
-    if knowledge_base_id:
-        knowledge_bases = Knowledges.get_knowledge_bases_by_user_id(
-            user.id, access_type
-        )
-        for knowledge_base in knowledge_bases:
-            if knowledge_base.id == knowledge_base_id:
-                has_access = True
-                break
-
+    # In notes-only app, files are accessible if user owns them or has admin access
+    has_access = file.user_id == user.id or user.role == "admin"
     return has_access
 
 

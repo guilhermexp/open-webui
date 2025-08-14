@@ -46,7 +46,7 @@
 	import Spinner from '../common/Spinner.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import NoteMenu from './Notes/NoteMenu.svelte';
-	import FilesOverlay from '../chat/MessageInput/FilesOverlay.svelte';
+	import FilesOverlay from '../common/FilesOverlay.svelte';
 	import { marked } from 'marked';
 	import XMark from '../icons/XMark.svelte';
 	import Folder from '../common/Folder.svelte';

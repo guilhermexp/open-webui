@@ -30,13 +30,13 @@ from open_webui.socket.main import (
     get_event_emitter,
     get_active_status_by_user_id,
 )
-from open_webui.routers.tasks import (
-    generate_queries,
-    generate_title,
-    generate_follow_ups,
-    generate_image_prompt,
-    generate_chat_tags,
-)
+# from open_webui.routers.tasks import ( - Tasks removed in notes-only app
+#     generate_queries,
+#     generate_title,
+#     generate_follow_ups,
+#     generate_image_prompt,
+#     generate_chat_tags,
+# )
 from open_webui.routers.retrieval import process_web_search, SearchForm
 from open_webui.routers.images import (
     load_b64_image_data,
@@ -360,16 +360,8 @@ async def chat_web_search_handler(
 
     queries = []
     try:
-        res = await generate_queries(
-            request,
-            {
-                "model": form_data["model"],
-                "messages": messages,
-                "prompt": user_message,
-                "type": "web_search",
-            },
-            user,
-        )
+        # Tasks removed in notes-only app
+        res = None
 
         response = res["choices"][0]["message"]["content"]
 
