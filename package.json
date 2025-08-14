@@ -7,13 +7,13 @@
 		"dev": "npm run pyodide:fetch && cd backend && ./dev.sh & npm run dev:frontend",
 		"dev:frontend": "vite dev --host",
 		"dev:backend": "cd backend && ./dev.sh",
-		"build": "npm run pyodide:fetch && vite build",
-		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"lint": "eslint . --fix && pylint backend/",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\" && black backend/ --exclude \".venv/|/venv/\"",
 		"test": "vitest --passWithNoTests",
-		"pyodide:fetch": "node scripts/prepare-pyodide.js"
+		"pyodide:fetch": "node scripts/prepare-pyodide.js",
+		"_build_unused": "npm run pyodide:fetch && vite build",
+		"_preview_unused": "vite preview"
 	},
 	"devDependencies": {
 		"@types/uuid": "^10.0.0",

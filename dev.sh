@@ -12,8 +12,8 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}🚀 Iniciando Open WebUI em modo desenvolvimento${NC}"
 
 # Configurações
-BACKEND_PORT="${BACKEND_PORT:-8082}"
-FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+BACKEND_PORT="${BACKEND_PORT:-8888}"
+FRONTEND_PORT="${FRONTEND_PORT:-4173}"
 
 # Função para limpar processos
 cleanup() {
