@@ -1,9 +1,5 @@
 # Notes App 📝
 
-![GitHub repo size](https://img.shields.io/github/repo-size/open-webui/open-webui)
-![GitHub language count](https://img.shields.io/github/languages/count/open-webui/open-webui)
-![GitHub top language](https://img.shields.io/github/languages/top/open-webui/open-webui)
-
 **Notes App é uma aplicação especializada de notas baseada no Open WebUI, otimizada para fornecer uma experiência completa e avançada de criação e gerenciamento de notas.** Esta aplicação mantém todas as funcionalidades robustas do sistema de notas original, mas com 90% menos complexidade, focando exclusivamente na experiência de notas.
 
 ## ✨ Características Principais
@@ -176,7 +172,7 @@ Esta aplicação mantém **100% das funcionalidades de notas** do Open WebUI ori
 
 Para simplificar e focar apenas em notas, foram removidas ~90% das funcionalidades:
 
-- ❌ Sistema de chat completo
+
 - ❌ Gestão de modelos de IA
 - ❌ Workspace e ferramentas
 - ❌ Sistema de canais
@@ -193,13 +189,6 @@ Para simplificar e focar apenas em notas, foram removidas ~90% das funcionalidad
 - **🎯 Clareza de propósito** - Foco total em notas
 - **📱 Interface mais limpa** - Sem distrações
 
-## 🤝 Contribuição
-
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -am 'Add nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
 
 ## 📝 Licença
 

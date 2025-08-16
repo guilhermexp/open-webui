@@ -23,7 +23,7 @@ sqlalchemy==2.0.38
 alembic==1.14.0
 peewee==3.18.1
 peewee-migrate==1.12.2
-psycopg2-binary==2.9.9
+psycopg2==2.9.10
 pgvector==0.4.0
 PyMySQL==1.1.1
 bcrypt==4.3.0
@@ -75,7 +75,7 @@ fpdf2==2.8.2
 pymdown-extensions==10.14.2
 docx2txt==0.8
 python-pptx==1.0.2
-unstructured==0.16.17
+unstructured==0.18.13
 nltk==3.9.1
 Markdown==3.7
 pypandoc==1.15

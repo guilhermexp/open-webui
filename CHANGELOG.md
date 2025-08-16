@@ -1,7 +1,18 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [1.0.0] - 2025-08-15
 
-## [Unreleased]
+### Added
+- Notes App especializada baseada no Open WebUI
+- Editor avançado com chat integrado
+- Sistema de transcrição de áudio
+- Processamento de URLs
+- Sistema de pastas organizadas
+- Interface moderna e responsiva
 
-Initial development version.
+### Features
+- Frontend SvelteKit
+- Backend FastAPI
+- Autenticação configurada
+- CORS habilitado
+- Proteção Notes App ativa
